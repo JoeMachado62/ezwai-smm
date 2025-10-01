@@ -1,0 +1,88 @@
+# Environment Variables (IMPORTANT: Never commit API keys!)
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+instance/
+
+# Logs
+logs/
+*.log
+test_output.log
+
+# Test Output Files
+test_*.html
+test_*.json
+
+# Flask
+instance/
+.webassets-cache
+
+# Migration Files (if using Flask-Migrate)
+migrations/
+
+# PID files
+*.pid
+gunicorn.pid
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+
+# Backup files
+*.bak
+*.backup
+nul
+
+# Sensitive credential files
+*Codes*.txt
+*Keys*.txt
+*API Key*.txt
+*Client ID*.txt
+sk-*.txt
+WORDPRESS BLOG AUTOMATION PROJECT.txt

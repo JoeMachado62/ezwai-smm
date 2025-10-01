@@ -1,0 +1,94 @@
+App Name:  EZWAI_X_SMM   SMM Website Password:  EZWAI_SMM2024#
+
+API Key
+yTDGgVtnGBivJuaD5Lj3kcw0M
+
+
+API Key Secret
+dInjOU0GatJuYv44iHae8BBvVGIrxIMNTeHyZ8aFkL7y7HImae
+
+Bearer Token
+AAAAAAAAAAAAAAAAAAAAAIkBugEAAAAA1%2Fa23y7PEiDMZtWXm4LU6onVqac%3D9zWEnTpP2s6op70XAWpYvS6WqG2jkdLoSC9oZq7ySMtAT3tzD8
+
+
+https://api.blog2social.com/auth/v1/
+
+Here is your OAuth 2.0 Client ID and Client Secret
+For security, this will be the last time we'll fully display the Secret.
+Save it in a secure location
+Treat it like a password or a set of keys
+If security has been compromised, regenerate it
+DO NOT store it in public places or shared docs
+
+Client ID
+dThhQ1l6VUduRUZWVHQyYTk2NW46MTpjaQ
+
+Client Secret
+1WsOyZJ5OqnQXFT6Ez1EqvNRIeNgipWfPapcYpLheioYJU5Fqf
+
+Consumer Keys:
+
+API Key
+
+oTbGbAkBV0AGAn6EDlNZb11D0
+
+
+API Key Secret
+
+V5HLpIFebZK8xvbV2Ae9fvHSR1yAKcHrMSGCLKjkzPjieaS5sC
+
+--------------------------------------------------------------------------------------------------------
+
+Here are your keys & tokens
+App name
+Keys & Tokens
+For security, this will be the last time we’ll fully display these. If something happens, you can always regenerate them. Learn more
+
+API Key
+
+
+O6OFasTMfCMNRzFLlOJWoPqHR
+
+copy-light
+Copy
+API Key Secret
+
+
+kh2OdbUjvg1DydXsrRBvSLqkLHsIsvWWQ01UeDlRzP6vsnGMMP
+
+copy-light
+Copy
+Bearer Token
+
+
+AAAAAAAAAAAAAAAAAAAAAHDJuQEAAAAAXTTvL7ehQAEr1Nw%2Bjz5rxcMZsTU%3DxuheYNtzP0Qe5UmnvclgrTWUUKzjJbIsOOF1pmiPCjeeaDyqYV
+
+copy-light
+Copy
+Setup your App
+Your App settings page will allow you to enable 3rd party authentication, get user tokens and more.
+
+
+Here is your OAuth 2.0 Client ID and Client Secret
+For security, this will be the last time we'll fully display the Secret.
+Save it in a secure location
+Treat it like a password or a set of keys
+If security has been compromised, regenerate it
+DO NOT store it in public places or shared docs
+Client ID
+
+
+NzM2b3FOYXM4SlJjeDdqcVZGWF86MTpjaQ
+
+copy-light
+Copy
+Client Secret
+
+
+
+copy-light
+Copy
+
+MAKE webhook for Niched.ai
+
+https://hook.us1.make.com/r07lg8cr731akmwtcorhsu6pk5qodpbd

@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EZWAI SMM - AI Content Dashboard</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            color: #1a1a1a;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 968px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 35px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h2 {
+            font-size: 1.8em;
+            color: #1a1a1a;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-icon {
+            font-size: 1.5em;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 1em;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .progress-section {
+            margin-top: 30px;
+            padding: 25px;
+            background: #f8f9ff;
+            border-radius: 15px;
+            display: none;
+        }
+
+        .progress-section.active {
+            display: block;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 12px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.5s ease;
+            border-radius: 10px;
+        }
+
+        .progress-text {
+            color: #666;
+            font-size: 0.95em;
+            text-align: center;
+        }
+
+        .status-message {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-weight: 500;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+
+        .status-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .tab-navigation {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            background: white;
+            padding: 10px;
+            border-radius: 15px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .schedule-grid {
+            display: grid;
+            gap: 15px;
+        }
+
+        .schedule-item {
+            display: grid;
+            grid-template-columns: 150px 1fr 1fr auto;
+            gap: 15px;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9ff;
+            border-radius: 10px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 34px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: #667eea;
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
+
+        .query-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .query-item {
+            display: flex;
+            gap: 10px;
+        }
+
+        .query-item input {
+            flex: 1;
+        }
+
+        .btn-small {
+            padding: 10px 20px;
+            font-size: 0.9em;
+            width: auto;
+        }
+
+        .preview-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .preview-modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview-content {
+            background: white;
+            border-radius: 20px;
+            max-width: 1200px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .preview-header {
+            position: sticky;
+            top: 0;
+            background: white;
+            padding: 25px;
+            border-bottom: 2px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .close-preview {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .preview-body {
+            padding: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 EZWAI SMM Dashboard</h1>
+            <p>AI-Powered Content Management for WordPress</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="totalPosts">0</div>
+                <div class="stat-label">Total Posts</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="scheduledPosts">0</div>
+                <div class="stat-label">Scheduled</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="activeQueries">0</div>
+                <div class="stat-label">Active Topics</div>
+            </div>
+        </div>
+
+        <div class="tab-navigation">
+            <button class="tab-btn active" onclick="switchTab('create')">✨ Create Post</button>
+            <button class="tab-btn" onclick="switchTab('queries')">📝 Topics</button>
+            <button class="tab-btn" onclick="switchTab('schedule')">📅 Schedule</button>
+            <button class="tab-btn" onclick="switchTab('settings')">⚙️ Settings</button>
+        </div>
+
+        <!-- Create Post Tab -->
+        <div id="createTab" class="tab-content active">
+            <div class="card">
+                <h2><span class="card-icon">✍️</span> Create Magazine-Style Article</h2>
+
+                <form id="createPostForm">
+                    <div class="form-group">
+                        <label for="postTopic">Article Topic or News Query</label>
+                        <textarea
+                            id="postTopic"
+                            placeholder="E.g., 'Latest trends in artificial intelligence for small businesses'"
+                            required
+                        ></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="systemPrompt">Writing Style & Instructions</label>
+                        <textarea
+                            id="systemPrompt"
+                            placeholder="E.g., 'Write in a professional but conversational tone, targeting small business owners. Include practical examples and actionable tips.'"
+                        ></textarea>
+                    </div>
+
+                    <button type="submit" class="btn" id="createBtn">
+                        🚀 Generate Magazine Article (1500+ words)
+                    </button>
+                </form>
+
+                <div class="progress-section" id="progressSection">
+                    <div class="progress-text" id="progressText">Initializing...</div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                </div>
+
+                <div id="statusMessage"></div>
+            </div>
+        </div>
+
+        <!-- Topics Tab -->
+        <div id="queriesTab" class="tab-content">
+            <div class="card">
+                <h2><span class="card-icon">📝</span> Content Topics</h2>
+                <p style="margin-bottom: 25px; color: #666;">
+                    Add up to 10 topics. The system will rotate through them for scheduled posts.
+                </p>
+
+                <div class="query-list" id="queryList">
+                    <!-- Queries will be populated here -->
+                </div>
+
+                <button class="btn" onclick="saveQueries()" style="margin-top: 20px;">
+                    💾 Save Topics
+                </button>
+            </div>
+        </div>
+
+        <!-- Schedule Tab -->
+        <div id="scheduleTab" class="tab-content">
+            <div class="card">
+                <h2><span class="card-icon">📅</span> Publishing Schedule</h2>
+                <p style="margin-bottom: 25px; color: #666;">
+                    Configure when to automatically publish articles (up to 2 times per day)
+                </p>
+
+                <div class="schedule-grid" id="scheduleGrid">
+                    <!-- Schedule items will be populated here -->
+                </div>
+
+                <button class="btn" onclick="saveSchedule()" style="margin-top: 20px;">
+                    💾 Save Schedule
+                </button>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settingsTab" class="tab-content">
+            <div class="dashboard-grid">
+                <div class="card">
+                    <h2><span class="card-icon">🔑</span> OpenAI Settings</h2>
+                    <div class="form-group">
+                        <label for="openaiKey">API Key</label>
+                        <input
+                            type="password"
+                            id="openaiKey"
+                            placeholder="sk-..."
+                        />
+                    </div>
+                    <button class="btn" onclick="saveOpenAI()">Save</button>
+                </div>
+
+                <div class="card">
+                    <h2><span class="card-icon">🌐</span> WordPress Settings</h2>
+                    <div class="form-group">
+                        <label for="wpUrl">REST API URL</label>
+                        <input
+                            type="url"
+                            id="wpUrl"
+                            placeholder="https://yoursite.com/wp-json/wp/v2"
+                        />
+                    </div>
+                    <div class="form-group">
+                        <label for="wpUsername">Username</label>
+                        <input
+                            type="text"
+                            id="wpUsername"
+                        />
+                    </div>
+                    <div class="form-group">
+                        <label for="wpPassword">Application Password</label>
+                        <input
+                            type="password"
+                            id="wpPassword"
+                        />
+                    </div>
+                    <button class="btn" onclick="saveWordPress()">Save</button>
+                </div>
+
+                <div class="card">
+                    <h2><span class="card-icon">🤖</span> Perplexity AI</h2>
+                    <div class="form-group">
+                        <label for="perplexityToken">API Token</label>
+                        <input
+                            type="password"
+                            id="perplexityToken"
+                            placeholder="pplx-..."
+                        />
+                    </div>
+                    <button class="btn" onclick="savePerplexity()">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div class="preview-modal" id="previewModal">
+        <div class="preview-content">
+            <div class="preview-header">
+                <h2>Article Preview</h2>
+                <button class="close-preview" onclick="closePreview()">Close</button>
+            </div>
+            <div class="preview-body" id="previewBody">
+                <!-- Article preview will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            event.target.classList.add('active');
+
+            // Load data for specific tabs
+            if (tabName === 'queries') loadQueries();
+            if (tabName === 'schedule') loadSchedule();
+            if (tabName === 'settings') loadSettings();
+        }
+
+        // Create Post
+        document.getElementById('createPostForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const topic = document.getElementById('postTopic').value;
+            const systemPrompt = document.getElementById('systemPrompt').value ||
+                'Write a comprehensive, engaging article in a professional but conversational tone.';
+
+            const btn = document.getElementById('createBtn');
+            const progressSection = document.getElementById('progressSection');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const statusMessage = document.getElementById('statusMessage');
+
+            btn.disabled = true;
+            progressSection.classList.add('active');
+            statusMessage.innerHTML = '';
+
+            // Simulate progress
+            let progress = 0;
+            const progressStages = [
+                'Analyzing topic...',
+                'Generating article structure...',
+                'Writing magazine-style content...',
+                'Creating hero image...',
+                'Generating section images...',
+                'Finalizing article...',
+                'Publishing to WordPress...'
+            ];
+
+            const progressInterval = setInterval(() => {
+                if (progress < 90) {
+                    progress += Math.random() * 15;
+                    if (progress > 90) progress = 90;
+                    progressBar.style.width = progress + '%';
+                    const stage = Math.floor(progress / (90 / progressStages.length));
+                    progressText.textContent = progressStages[stage] || 'Processing...';
+                }
+            }, 1000);
+
+            try {
+                const response = await fetch('/api/create_test_post', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        blog_post_idea: topic,
+                        system_prompt: systemPrompt
+                    })
+                });
+
+                clearInterval(progressInterval);
+                progress = 100;
+                progressBar.style.width = '100%';
+                progressText.textContent = 'Complete!';
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusMessage.innerHTML = `
+                        <div class="status-message status-success">
+                            <strong>✅ Success!</strong> Article "${data.title}" has been created and published to WordPress as a draft.
+                            ${data.warning ? '<br><br>⚠️ ' + data.warning : ''}
+                        </div>
+                    `;
+
+                    // Show preview option
+                    if (data.content) {
+                        statusMessage.innerHTML += `
+                            <button class="btn btn-secondary" onclick="showPreview(${JSON.stringify(data.content).replace(/"/g, '&quot;')})" style="margin-top: 15px;">
+                                👁️ Preview Article
+                            </button>
+                        `;
+                    }
+                } else {
+                    throw new Error(data.error || 'Failed to create post');
+                }
+            } catch (error) {
+                clearInterval(progressInterval);
+                statusMessage.innerHTML = `
+                    <div class="status-message status-error">
+                        <strong>❌ Error:</strong> ${error.message}
+                    </div>
+                `;
+            } finally {
+                btn.disabled = false;
+                setTimeout(() => {
+                    progressSection.classList.remove('active');
+                }, 3000);
+            }
+        });
+
+        // Load and save queries
+        function loadQueries() {
+            fetch('/api/get_specific_queries', {
+                credentials: 'include'
+            })
+            .then(res => res.json())
+            .then(data => {
+                const queryList = document.getElementById('queryList');
+                queryList.innerHTML = '';
+
+                for (let i = 1; i <= 10; i++) {
+                    const queryValue = data[i] || '';
+                    queryList.innerHTML += `
+                        <div class="query-item">
+                            <input
+                                type="text"
+                                id="query${i}"
+                                placeholder="Topic ${i}"
+                                value="${queryValue}"
+                            />
+                        </div>
+                    `;
+                }
+
+                updateStats();
+            })
+            .catch(err => console.error('Error loading queries:', err));
+        }
+
+        function saveQueries() {
+            const queries = {};
+            for (let i = 1; i <= 10; i++) {
+                const value = document.getElementById(`query${i}`).value;
+                if (value) queries[i] = value;
+            }
+
+            fetch('/api/save_specific_queries', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ specific_topic_queries: queries })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert('✅ Topics saved successfully!');
+                updateStats();
+            })
+            .catch(err => alert('❌ Error saving topics: ' + err.message));
+        }
+
+        // Load and save schedule
+        function loadSchedule() {
+            fetch('/api/profile', {
+                credentials: 'include'
+            })
+            .then(res => res.json())
+            .then(data => {
+                const schedule = data.schedule || [];
+                const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                const scheduleGrid = document.getElementById('scheduleGrid');
+                scheduleGrid.innerHTML = '';
+
+                days.forEach((day, index) => {
+                    const daySchedule = schedule[index] || { enabled: false, time1: '', time2: '' };
+                    scheduleGrid.innerHTML += `
+                        <div class="schedule-item">
+                            <strong>${day}</strong>
+                            <input type="time" id="time1_${index}" value="${daySchedule.time1 || ''}" />
+                            <input type="time" id="time2_${index}" value="${daySchedule.time2 || ''}" />
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="enabled_${index}" ${daySchedule.enabled ? 'checked' : ''} />
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    `;
+                });
+            })
+            .catch(err => console.error('Error loading schedule:', err));
+        }
+
+        function saveSchedule() {
+            const schedule = [];
+            for (let i = 0; i < 7; i++) {
+                schedule.push({
+                    enabled: document.getElementById(`enabled_${i}`).checked,
+                    time1: document.getElementById(`time1_${i}`).value,
+                    time2: document.getElementById(`time2_${i}`).value
+                });
+            }
+
+            fetch('/api/save_schedule', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ schedule })
+            })
+            .then(res => res.json())
+            .then(data => alert('✅ Schedule saved successfully!'))
+            .catch(err => alert('❌ Error saving schedule: ' + err.message));
+        }
+
+        // Settings functions
+        function loadSettings() {
+            fetch('/api/profile', {
+                credentials: 'include'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.openai_api_key) document.getElementById('openaiKey').value = data.openai_api_key;
+                if (data.wordpress_rest_api_url) document.getElementById('wpUrl').value = data.wordpress_rest_api_url;
+                if (data.wordpress_username) document.getElementById('wpUsername').value = data.wordpress_username;
+                if (data.wordpress_password) document.getElementById('wpPassword').value = data.wordpress_password;
+                if (data.perplexity_api_token) document.getElementById('perplexityToken').value = data.perplexity_api_token;
+                if (data.system_prompt) document.getElementById('systemPrompt').value = data.system_prompt;
+            })
+            .catch(err => console.error('Error loading settings:', err));
+        }
+
+        function saveOpenAI() {
+            const apiKey = document.getElementById('openaiKey').value;
+            fetch('/api/update_integrations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ openai_api_key: apiKey })
+            })
+            .then(res => res.json())
+            .then(data => alert('✅ OpenAI settings saved!'))
+            .catch(err => alert('❌ Error: ' + err.message));
+        }
+
+        function saveWordPress() {
+            fetch('/api/update_integrations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    wordpress_rest_api_url: document.getElementById('wpUrl').value,
+                    wordpress_username: document.getElementById('wpUsername').value,
+                    wordpress_password: document.getElementById('wpPassword').value
+                })
+            })
+            .then(res => res.json())
+            .then(data => alert('✅ WordPress settings saved!'))
+            .catch(err => alert('❌ Error: ' + err.message));
+        }
+
+        function savePerplexity() {
+            const token = document.getElementById('perplexityToken').value;
+            fetch('/api/update_integrations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ perplexity_api_token: token })
+            })
+            .then(res => res.json())
+            .then(data => alert('✅ Perplexity AI settings saved!'))
+            .catch(err => alert('❌ Error: ' + err.message));
+        }
+
+        // Update statistics
+        function updateStats() {
+            fetch('/api/get_specific_queries', {
+                credentials: 'include'
+            })
+            .then(res => res.json())
+            .then(data => {
+                const count = Object.keys(data).filter(key => data[key]).length;
+                document.getElementById('activeQueries').textContent = count;
+            })
+            .catch(err => console.error('Error updating stats:', err));
+        }
+
+        // Preview functions
+        function showPreview(content) {
+            document.getElementById('previewBody').innerHTML = content;
+            document.getElementById('previewModal').classList.add('active');
+        }
+
+        function closePreview() {
+            document.getElementById('previewModal').classList.remove('active');
+        }
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            loadSettings();
+            updateStats();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EZWAI SMM - Login</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .auth-container {
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            max-width: 450px;
+            width: 100%;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo h1 {
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .logo p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            background: #f5f5f5;
+            border: none;
+            border-radius: 12px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .form-content {
+            display: none;
+        }
+
+        .form-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 1em;
+            font-family: 'Inter', sans-serif;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .alert {
+            padding: 14px 18px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .form-footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            font-size: 0.95em;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="logo">
+            <h1>EZWAI SMM</h1>
+            <p>AI-Powered Content Automation</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('login')">Login</button>
+            <button class="tab" onclick="switchTab('register')">Register</button>
+        </div>
+
+        <div id="alert" class="alert"></div>
+
+        <!-- Login Form -->
+        <div id="login-form" class="form-content active">
+            <form onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="login-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" required>
+                </div>
+                <button type="submit" class="submit-btn" id="login-btn">Login</button>
+            </form>
+            <div class="form-footer">
+                Don't have an account? Click Register above.
+            </div>
+        </div>
+
+        <!-- Register Form -->
+        <div id="register-form" class="form-content">
+            <form onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label for="register-first-name">First Name</label>
+                    <input type="text" id="register-first-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-last-name">Last Name</label>
+                    <input type="text" id="register-last-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-email">Email</label>
+                    <input type="email" id="register-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-password">Password</label>
+                    <input type="password" id="register-password" required minlength="6">
+                </div>
+                <button type="submit" class="submit-btn" id="register-btn">Create Account</button>
+            </form>
+            <div class="form-footer">
+                Already have an account? Click Login above.
+            </div>
+        </div>
+
+        <!-- Email Verification Form -->
+        <div id="verify-form" class="form-content">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h3 style="color: #667eea;">Check Your Email</h3>
+                <p style="color: #666;">We sent a 6-digit verification code to<br><strong id="verify-email-display"></strong></p>
+            </div>
+            <form onsubmit="handleVerification(event)">
+                <div class="form-group">
+                    <label for="verification-code">Verification Code</label>
+                    <input type="text" id="verification-code" required pattern="[0-9]{6}" maxlength="6" placeholder="000000" style="text-align: center; font-size: 1.5em; letter-spacing: 0.3em;">
+                </div>
+                <button type="submit" class="submit-btn" id="verify-btn">Verify Email</button>
+            </form>
+            <div class="form-footer">
+                Didn't receive the code? <a href="#" onclick="resendCode(event)" style="color: #667eea; text-decoration: none; font-weight: 600;">Resend Code</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tab) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Update form content
+            document.querySelectorAll('.form-content').forEach(f => f.classList.remove('active'));
+            document.getElementById(tab + '-form').classList.add('active');
+
+            // Clear alert
+            hideAlert();
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = 'alert ' + type + ' show';
+        }
+
+        function hideAlert() {
+            const alert = document.getElementById('alert');
+            alert.className = 'alert';
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const btn = document.getElementById('login-btn');
+
+            btn.disabled = true;
+            btn.textContent = 'Logging in...';
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert('Login successful! Redirecting...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1000);
+                } else if (response.status === 403 && data.requires_verification) {
+                    // Email not verified - show verification form
+                    currentUserId = data.user_id;
+                    currentUserEmail = email;
+
+                    document.getElementById('verify-email-display').textContent = email;
+                    document.querySelectorAll('.form-content').forEach(f => f.classList.remove('active'));
+                    document.getElementById('verify-form').classList.add('active');
+
+                    showAlert('Please verify your email first. Check your inbox.', 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Login';
+                } else {
+                    showAlert(data.error || 'Login failed', 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Login';
+                }
+            } catch (error) {
+                showAlert('Network error. Please try again.', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Login';
+            }
+        }
+
+        let currentUserId = null;
+        let currentUserEmail = null;
+
+        async function handleRegister(event) {
+            event.preventDefault();
+
+            const firstName = document.getElementById('register-first-name').value;
+            const lastName = document.getElementById('register-last-name').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const btn = document.getElementById('register-btn');
+
+            btn.disabled = true;
+            btn.textContent = 'Creating account...';
+
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        first_name: firstName,
+                        last_name: lastName,
+                        email: email,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.requires_verification) {
+                    // Store user info for verification
+                    currentUserId = data.user_id;
+                    currentUserEmail = email;
+
+                    // Show verification form
+                    document.getElementById('verify-email-display').textContent = email;
+                    document.querySelectorAll('.form-content').forEach(f => f.classList.remove('active'));
+                    document.getElementById('verify-form').classList.add('active');
+
+                    showAlert('Verification code sent! Check your email.', 'success');
+                    btn.disabled = false;
+                    btn.textContent = 'Create Account';
+                } else if (response.ok) {
+                    showAlert('Account created! Please login.', 'success');
+                    setTimeout(() => {
+                        switchTab('login');
+                        document.getElementById('login-email').value = email;
+                    }, 1500);
+                } else {
+                    showAlert(data.error || 'Registration failed', 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Create Account';
+                }
+            } catch (error) {
+                showAlert('Network error. Please try again.', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Create Account';
+            }
+        }
+
+        async function handleVerification(event) {
+            event.preventDefault();
+
+            const code = document.getElementById('verification-code').value;
+            const btn = document.getElementById('verify-btn');
+
+            btn.disabled = true;
+            btn.textContent = 'Verifying...';
+
+            try {
+                const response = await fetch('/api/verify_email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        user_id: currentUserId,
+                        code: code
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.verified) {
+                    showAlert('Email verified! Please login.', 'success');
+                    setTimeout(() => {
+                        document.querySelectorAll('.form-content').forEach(f => f.classList.remove('active'));
+                        document.getElementById('login-form').classList.add('active');
+                        document.getElementById('login-email').value = currentUserEmail;
+                        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                        document.querySelectorAll('.tab')[0].classList.add('active');
+                    }, 1500);
+                } else {
+                    showAlert(data.error || 'Verification failed', 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Verify Email';
+                    document.getElementById('verification-code').value = '';
+                }
+            } catch (error) {
+                showAlert('Network error. Please try again.', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Verify Email';
+            }
+        }
+
+        async function resendCode(event) {
+            event.preventDefault();
+
+            try {
+                const response = await fetch('/api/resend_verification', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        user_id: currentUserId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert('New verification code sent!', 'success');
+                } else {
+                    showAlert(data.error || 'Failed to resend code', 'error');
+                }
+            } catch (error) {
+                showAlert('Network error. Please try again.', 'error');
+            }
+        }
+
+        // Check if already logged in
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch('/api/profile', {
+                    credentials: 'include',
+                    redirect: 'manual'  // Don't follow redirects
+                });
+                if (response.ok || response.type === 'basic') {
+                    // Already logged in, redirect to dashboard
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                // Not logged in, stay on auth page
+            }
+        });
+    </script>
+</body>
+</html>

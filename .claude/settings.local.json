@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(net start:*)",
+      "Bash(sc query:*)",
+      "Bash(wmic:*)",
+      "Bash(python:*)",
+      "Bash(curl:*)",
+      "Bash(set FLASK_APP=app_v3.py)",
+      "Bash(tasklist)",
+      "Bash(findstr:*)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(stop_v3.bat)",
+      "Bash(cmd /c:*)",
+      "Bash(timeout:*)",
+      "WebFetch(domain:docs.perplexity.ai)",
+      "WebSearch",
+      "WebFetch(domain:platform.openai.com)",
+      "Bash(git init:*)",
+      "Bash(git config:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(gh repo create:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
