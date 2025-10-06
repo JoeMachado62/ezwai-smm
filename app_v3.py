@@ -71,8 +71,13 @@ app.config['MAIL_USERNAME'] = os.getenv('EMAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.getenv('EMAIL_PASSWORD')
 
 # Stripe configuration
-stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
-logger.info(f"Stripe API key configured: {bool(stripe.api_key)}")
+stripe_key = os.getenv('STRIPE_SECRET_KEY')
+if stripe_key and not stripe_key.startswith('YOUR_'):
+    stripe.api_key = stripe_key
+    logger.info(f"Stripe API key configured: True")
+else:
+    logger.warning("Stripe API key not configured - payment features disabled")
+    stripe.api_key = None
 
 db = SQLAlchemy(app)  # type: ignore[var-annotated]
 migrate = Migrate(app, db)
@@ -400,18 +405,21 @@ def register():
         if User.query.filter_by(email=data['email']).first():  # type: ignore[index]
             return jsonify({"error": "Email already registered"}), 400
 
-        # Create Stripe customer first
+        # Create Stripe customer first (if Stripe is configured)
         stripe_customer = None
-        try:
-            stripe_customer = stripe.Customer.create(
-                email=data['email'],  # type: ignore[index]
-                name=f"{data.get('first_name', '')} {data.get('last_name', '')}".strip(),
-                metadata={'source': 'ezwai_registration'}
-            )
-            logger.info(f"Created Stripe customer: {stripe_customer.id}")
-        except Exception as e:
-            logger.error(f"Stripe customer creation failed: {e}")
-            return jsonify({"error": "Payment system error. Please try again later."}), 500
+        if stripe.api_key:
+            try:
+                stripe_customer = stripe.Customer.create(
+                    email=data['email'],  # type: ignore[index]
+                    name=f"{data.get('first_name', '')} {data.get('last_name', '')}".strip(),
+                    metadata={'source': 'ezwai_registration'}
+                )
+                logger.info(f"Created Stripe customer: {stripe_customer.id}")
+            except Exception as e:
+                logger.error(f"Stripe customer creation failed: {e}")
+                return jsonify({"error": "Payment system error. Please try again later."}), 500
+        else:
+            logger.warning("Stripe not configured - skipping customer creation")
 
         user = User(  # type: ignore[call-arg]
             email=data['email'],  # type: ignore[index]
