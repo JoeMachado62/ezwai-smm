@@ -7,6 +7,7 @@ requests>=2.26.0,<3.0.0
 openai>=1.0.0,<2.0.0
 replicate>=0.15.0,<1.0.0
 sendgrid>=6.10.0,<7.0.0
+stripe>=5.0.0,<6.0.0
 python-wordpress-xmlrpc@git+https://github.com/maxcutler/python-wordpress-xmlrpc.git
 python-dotenv>=0.19.2,<2.0.0
 pymysql>=1.0.2,<2.0.0

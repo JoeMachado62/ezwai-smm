@@ -24,6 +24,18 @@ from wordpress_integration import create_wordpress_post
 from email_notification import send_email_notification
 from email_verification import generate_verification_code, get_code_expiry, send_verification_email, verify_code
 import traceback
+import stripe
+from credit_system import (
+    check_sufficient_credits,
+    deduct_credits,
+    refund_credits,
+    add_credits_manual,
+    add_welcome_credit,
+    get_transaction_history,
+    ARTICLE_COST,
+    WELCOME_CREDIT,
+    MIN_PURCHASE
+)
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -57,6 +69,10 @@ app.config['MAIL_SERVER'] = os.getenv('EMAIL_HOST')
 app.config['MAIL_PORT'] = int(os.getenv('EMAIL_PORT', 587))
 app.config['MAIL_USERNAME'] = os.getenv('EMAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.getenv('EMAIL_PASSWORD')
+
+# Stripe configuration
+stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
+logger.info(f"Stripe API key configured: {bool(stripe.api_key)}")
 
 db = SQLAlchemy(app)  # type: ignore[var-annotated]
 migrate = Migrate(app, db)
@@ -384,11 +400,26 @@ def register():
         if User.query.filter_by(email=data['email']).first():  # type: ignore[index]
             return jsonify({"error": "Email already registered"}), 400
 
+        # Create Stripe customer first
+        stripe_customer = None
+        try:
+            stripe_customer = stripe.Customer.create(
+                email=data['email'],  # type: ignore[index]
+                name=f"{data.get('first_name', '')} {data.get('last_name', '')}".strip(),
+                metadata={'source': 'ezwai_registration'}
+            )
+            logger.info(f"Created Stripe customer: {stripe_customer.id}")
+        except Exception as e:
+            logger.error(f"Stripe customer creation failed: {e}")
+            return jsonify({"error": "Payment system error. Please try again later."}), 500
+
         user = User(  # type: ignore[call-arg]
             email=data['email'],  # type: ignore[index]
             first_name=data.get('first_name', ''),
             last_name=data.get('last_name', ''),
-            email_verified=False  # Not verified yet
+            email_verified=False,  # Not verified yet
+            stripe_customer_id=stripe_customer.id if stripe_customer else None,
+            credit_balance=WELCOME_CREDIT  # Add welcome credit
         )
         user.set_password(data['password'])
 
@@ -400,6 +431,9 @@ def register():
 
         db.session.add(user)
         db.session.commit()
+
+        # Log welcome credit transaction
+        add_welcome_credit(user.id, db)
 
         # Send verification email
         email_sent = send_verification_email(
@@ -764,6 +798,24 @@ def system_prompt():
 def create_test_post():
     try:
         logger.info(f"[V3] Starting AI-powered magazine article creation for user {current_user.id}")
+
+        # CHECK CREDITS FIRST
+        has_credits, credit_message = check_sufficient_credits(current_user)
+        if not has_credits:
+            logger.warning(f"[Credits] User {current_user.id} has insufficient credits: {credit_message}")
+            return jsonify({
+                "error": credit_message,
+                "balance": current_user.credit_balance,
+                "required": ARTICLE_COST,
+                "action_required": "purchase_credits"
+            }), 402  # Payment Required status code
+
+        # DEDUCT CREDITS BEFORE GENERATION
+        if not deduct_credits(current_user, db):
+            logger.error(f"[Credits] Failed to deduct credits for user {current_user.id}")
+            return jsonify({"error": "Credit processing error. Please try again."}), 500
+
+        logger.info(f"[V3] Credits deducted. Proceeding with article generation")
         logger.info(f"[V3] Using GPT-5-mini with reasoning + SeeDream-4 2K images")
 
         # Get manual topic, system prompt, and writing style from request body
@@ -804,9 +856,13 @@ def create_test_post():
 
         if error:
             logger.error(f"Error creating V3 blog post for user {current_user.id}: {error}")
+            # REFUND credits on failure
+            refund_credits(current_user, db, reason=f"Article generation failed: {error}")
             return jsonify({"error": error}), 500
         if not post:
             logger.error(f"Failed to create V3 test post for user {current_user.id}")
+            # REFUND credits on failure
+            refund_credits(current_user, db, reason="Article generation failed: No post created")
             return jsonify({"error": "Failed to create the test post."}), 500
 
         logger.info(f"[V3] Successfully created magazine-style post with reasoning for user {current_user.id}")
@@ -828,6 +884,8 @@ def create_test_post():
     except Exception as e:
         logger.error(f"Unexpected error in V3 create_test_post for user {current_user.id}: {str(e)}")
         logger.error(f"Traceback: {traceback.format_exc()}")
+        # REFUND credits on unexpected error
+        refund_credits(current_user, db, reason=f"Unexpected error: {str(e)[:100]}")
         return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
 
 @app.route('/api/publish_post/<int:post_id>', methods=['POST'])
@@ -856,6 +914,222 @@ def publish_post(post_id):
         logger.error(f"Error publishing post {post_id}: {str(e)}")
         logger.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
+
+# ============================================================================
+# CREDIT SYSTEM & STRIPE PAYMENT ENDPOINTS
+# ============================================================================
+
+@app.route('/api/users/<int:user_id>/credits', methods=['GET'])
+@login_required
+def get_user_credits(user_id):
+    """Get user's current credit balance and stats"""
+    if current_user.id != user_id:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    return jsonify({
+        "balance": current_user.credit_balance,
+        "auto_recharge_enabled": current_user.auto_recharge_enabled,
+        "auto_recharge_amount": current_user.auto_recharge_amount,
+        "auto_recharge_threshold": current_user.auto_recharge_threshold,
+        "total_articles": current_user.total_articles_generated,
+        "total_spent": current_user.total_spent,
+        "article_cost": ARTICLE_COST
+    }), 200
+
+
+@app.route('/api/users/<int:user_id>/transactions', methods=['GET'])
+@login_required
+def get_user_transactions(user_id):
+    """Get transaction history for user"""
+    if current_user.id != user_id:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    transactions = get_transaction_history(user_id, limit=50)
+    return jsonify({"transactions": transactions}), 200
+
+
+@app.route('/api/users/<int:user_id>/auto-recharge', methods=['PUT'])
+@login_required
+def update_auto_recharge(user_id):
+    """Update auto-recharge settings"""
+    if current_user.id != user_id:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    try:
+        data = request.json
+        current_user.auto_recharge_enabled = data.get('enabled', False)
+        current_user.auto_recharge_amount = max(float(data.get('amount', 10.00)), MIN_PURCHASE)
+        current_user.auto_recharge_threshold = max(float(data.get('threshold', 2.50)), ARTICLE_COST)
+
+        db.session.commit()
+
+        return jsonify({
+            "message": "Auto-recharge settings updated",
+            "auto_recharge_enabled": current_user.auto_recharge_enabled,
+            "auto_recharge_amount": current_user.auto_recharge_amount,
+            "auto_recharge_threshold": current_user.auto_recharge_threshold
+        }), 200
+    except Exception as e:
+        logger.error(f"Error updating auto-recharge: {e}")
+        return jsonify({"error": "Failed to update settings"}), 500
+
+
+@app.route('/api/credits/purchase', methods=['POST'])
+@login_required
+def purchase_credits():
+    """Create Stripe checkout session for credit purchase"""
+    try:
+        data = request.json or {}
+        amount = float(data.get('amount', MIN_PURCHASE))
+
+        if amount < MIN_PURCHASE:
+            return jsonify({"error": f"Minimum purchase is ${MIN_PURCHASE}"}), 400
+
+        # Create Stripe checkout session
+        session = stripe.checkout.Session.create(
+            customer=current_user.stripe_customer_id,
+            payment_method_types=['card'],
+            line_items=[{
+                'price_data': {
+                    'currency': 'usd',
+                    'product_data': {
+                        'name': 'EZWAI SMM Credits',
+                        'description': f'${amount:.2f} in article generation credits',
+                        'images': ['https://funnelmngr.com/static/ezwai-logo.png']  # Optional: Add your logo
+                    },
+                    'unit_amount': int(amount * 100)  # Convert to cents
+                },
+                'quantity': 1
+            }],
+            mode='payment',
+            success_url=f"{request.host_url}dashboard?purchase=success&session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{request.host_url}dashboard?purchase=cancelled",
+            metadata={
+                'user_id': str(current_user.id),
+                'credit_amount': str(amount),
+                'type': 'credit_purchase'
+            }
+        )
+
+        logger.info(f"[Stripe] Created checkout session {session.id} for user {current_user.id}")
+        return jsonify({"checkout_url": session.url, "session_id": session.id}), 200
+
+    except Exception as e:
+        logger.error(f"[Stripe] Checkout error: {e}")
+        return jsonify({"error": "Payment processing error. Please try again."}), 500
+
+
+@app.route('/api/credits/setup-payment-method', methods=['POST'])
+@login_required
+def setup_payment_method():
+    """Create Stripe Setup Intent for saving payment method (for auto-recharge)"""
+    try:
+        # Create setup intent
+        setup_intent = stripe.SetupIntent.create(
+            customer=current_user.stripe_customer_id,
+            payment_method_types=['card'],
+            metadata={'user_id': str(current_user.id)}
+        )
+
+        return jsonify({"client_secret": setup_intent.client_secret}), 200
+
+    except Exception as e:
+        logger.error(f"[Stripe] Setup intent error: {e}")
+        return jsonify({"error": "Failed to setup payment method"}), 500
+
+
+@app.route('/webhook/stripe', methods=['POST'])
+def stripe_webhook():
+    """Handle Stripe webhook events"""
+    payload = request.data
+    sig_header = request.headers.get('Stripe-Signature')
+    webhook_secret = os.getenv('STRIPE_WEBHOOK_SECRET')
+
+    if not webhook_secret:
+        logger.error("[Stripe] Webhook secret not configured")
+        return jsonify({"error": "Webhook not configured"}), 500
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, webhook_secret
+        )
+    except ValueError as e:
+        logger.error(f"[Stripe] Invalid payload: {e}")
+        return jsonify({"error": "Invalid payload"}), 400
+    except stripe.error.SignatureVerificationError as e:
+        logger.error(f"[Stripe] Invalid signature: {e}")
+        return jsonify({"error": "Invalid signature"}), 400
+
+    # Handle the event
+    event_type = event['type']
+    logger.info(f"[Stripe] Received event: {event_type}")
+
+    if event_type == 'checkout.session.completed':
+        session = event['data']['object']
+        handle_checkout_completed(session)
+
+    elif event_type == 'payment_intent.succeeded':
+        payment_intent = event['data']['object']
+        logger.info(f"[Stripe] PaymentIntent succeeded: {payment_intent['id']}")
+
+    elif event_type == 'payment_intent.payment_failed':
+        payment_intent = event['data']['object']
+        logger.error(f"[Stripe] PaymentIntent failed: {payment_intent['id']}")
+
+    elif event_type == 'setup_intent.succeeded':
+        setup_intent = event['data']['object']
+        handle_setup_intent_succeeded(setup_intent)
+
+    return jsonify({"status": "success"}), 200
+
+
+def handle_checkout_completed(session):
+    """Handle successful checkout session"""
+    try:
+        user_id = int(session['metadata']['user_id'])
+        amount = float(session['metadata']['credit_amount'])
+        payment_intent_id = session.get('payment_intent')
+
+        # Add credits to user account
+        success = add_credits_manual(user_id, amount, payment_intent_id, db)
+
+        if success:
+            logger.info(f"[Stripe] Added ${amount} credits to user {user_id}")
+
+            # Send confirmation email
+            user = User.query.get(user_id)
+            if user:
+                try:
+                    send_email_notification(
+                        user.email,
+                        "Credit Purchase Successful",
+                        f"Your account has been credited with ${amount:.2f}. New balance: ${user.credit_balance:.2f}"
+                    )
+                except Exception as email_error:
+                    logger.error(f"[Stripe] Email notification failed: {email_error}")
+        else:
+            logger.error(f"[Stripe] Failed to add credits for user {user_id}")
+
+    except Exception as e:
+        logger.error(f"[Stripe] Error handling checkout completion: {e}")
+
+
+def handle_setup_intent_succeeded(setup_intent):
+    """Handle successful payment method setup"""
+    try:
+        user_id = int(setup_intent['metadata']['user_id'])
+        payment_method_id = setup_intent['payment_method']
+
+        # Save payment method to user
+        user = User.query.get(user_id)
+        if user:
+            user.stripe_payment_method_id = payment_method_id
+            db.session.commit()
+            logger.info(f"[Stripe] Saved payment method for user {user_id}")
+
+    except Exception as e:
+        logger.error(f"[Stripe] Error handling setup intent: {e}")
+
 
 if __name__ == '__main__':
     # Print all routes for debugging
