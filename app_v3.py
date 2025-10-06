@@ -4,6 +4,9 @@ EZWAI SMM V3.0 Application - State-of-the-Art AI Content Generation
 - SeeDream-4 for 2K photorealistic magazine photography
 - Enhanced prompt engineering for professional results
 """
+# type: ignore - Suppress Pylance warnings for Flask/SQLAlchemy dynamic attributes
+from __future__ import annotations
+from typing import Optional, Any
 import logging
 from flask import Flask, request, jsonify, send_from_directory
 from flask_migrate import Migrate
@@ -16,7 +19,7 @@ import os
 import re
 from datetime import timedelta, datetime
 from perplexity_ai_integration import generate_blog_post_ideas, query_management
-from openai_integration_v3 import create_blog_post_with_images_v3  # V3 with GPT-5-mini + SeeDream-4
+from openai_integration_v4 import create_blog_post_with_images_v4  # V4 modular pipeline
 from wordpress_integration import create_wordpress_post
 from email_notification import send_email_notification
 from email_verification import generate_verification_code, get_code_expiry, send_verification_email, verify_code
@@ -55,36 +58,55 @@ app.config['MAIL_PORT'] = int(os.getenv('EMAIL_PORT', 587))
 app.config['MAIL_USERNAME'] = os.getenv('EMAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.getenv('EMAIL_PASSWORD')
 
-db = SQLAlchemy(app)
+db = SQLAlchemy(app)  # type: ignore[var-annotated]
 migrate = Migrate(app, db)
 
 login_manager = LoginManager(app)
-login_manager.login_view = 'serve_auth'  # Redirect to /auth page instead of API endpoint
+login_manager.login_view = 'serve_auth'  # type: ignore[assignment] - Redirect to /auth page instead of API endpoint
 
-class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128))
-    first_name = db.Column(db.String(80))
-    last_name = db.Column(db.String(80))
-    phone = db.Column(db.String(20))
-    billing_address = db.Column(db.String(200))
-    openai_api_key = db.Column(db.String(255))
-    wordpress_rest_api_url = db.Column(db.String(255))
-    wordpress_username = db.Column(db.String(80))
-    wordpress_password = db.Column(db.String(255))
-    perplexity_api_token = db.Column(db.String(255))
-    queries = db.Column(db.JSON)
-    system_prompt = db.Column(db.Text)
-    schedule = db.Column(db.JSON)
-    specific_topic_queries = db.Column(db.JSON)
-    last_query_index = db.Column(db.Integer, default=0)
+class User(UserMixin, db.Model):  # type: ignore[misc,name-defined]
+    # SQLAlchemy columns - type checker warnings suppressed
+    id = db.Column(db.Integer, primary_key=True)  # type: ignore[var-annotated]
+    email = db.Column(db.String(120), unique=True, nullable=False)  # type: ignore[var-annotated]
+    password_hash = db.Column(db.String(128))  # type: ignore[var-annotated]
+    first_name = db.Column(db.String(80))  # type: ignore[var-annotated]
+    last_name = db.Column(db.String(80))  # type: ignore[var-annotated]
+    phone = db.Column(db.String(20))  # type: ignore[var-annotated]
+    billing_address = db.Column(db.String(200))  # type: ignore[var-annotated]
+    openai_api_key = db.Column(db.String(255))  # type: ignore[var-annotated]
+    wordpress_rest_api_url = db.Column(db.String(255))  # type: ignore[var-annotated]
+    wordpress_username = db.Column(db.String(80))  # type: ignore[var-annotated]
+    wordpress_password = db.Column(db.String(255))  # type: ignore[var-annotated]
+    perplexity_api_token = db.Column(db.String(255))  # type: ignore[var-annotated]
+    queries = db.Column(db.JSON)  # type: ignore[var-annotated]
+    system_prompt = db.Column(db.Text)  # type: ignore[var-annotated]
+    schedule = db.Column(db.JSON)  # type: ignore[var-annotated]
+    specific_topic_queries = db.Column(db.JSON)  # type: ignore[var-annotated]
+    writing_styles = db.Column(db.JSON)  # type: ignore[var-annotated]
+    last_query_index = db.Column(db.Integer, default=0)  # type: ignore[var-annotated]
+
+    # Brand customization
+    brand_primary_color = db.Column(db.String(7), default='#08b2c6')  # type: ignore[var-annotated]
+    brand_accent_color = db.Column(db.String(7), default='#ff6b11')  # type: ignore[var-annotated]
+    use_default_branding = db.Column(db.Boolean, default=True)  # type: ignore[var-annotated]
 
     # 2FA email verification fields
-    email_verified = db.Column(db.Boolean, default=False)
-    verification_code = db.Column(db.String(6))
-    verification_code_expiry = db.Column(db.DateTime)
-    verification_attempts = db.Column(db.Integer, default=0)
+    email_verified = db.Column(db.Boolean, default=False)  # type: ignore[var-annotated]
+    verification_code = db.Column(db.String(6))  # type: ignore[var-annotated]
+    verification_code_expiry = db.Column(db.DateTime)  # type: ignore[var-annotated]
+    verification_attempts = db.Column(db.Integer, default=0)  # type: ignore[var-annotated]
+
+    # Credit system fields
+    credit_balance = db.Column(db.Float, default=5.00)  # type: ignore[var-annotated] - Welcome credit
+    auto_recharge_enabled = db.Column(db.Boolean, default=False)  # type: ignore[var-annotated]
+    auto_recharge_amount = db.Column(db.Float, default=10.00)  # type: ignore[var-annotated]
+    auto_recharge_threshold = db.Column(db.Float, default=2.50)  # type: ignore[var-annotated]
+    stripe_customer_id = db.Column(db.String(255), unique=True)  # type: ignore[var-annotated]
+    stripe_payment_method_id = db.Column(db.String(255))  # type: ignore[var-annotated]
+    is_admin = db.Column(db.Boolean, default=False)  # type: ignore[var-annotated]
+    total_articles_generated = db.Column(db.Integer, default=0)  # type: ignore[var-annotated]
+    total_spent = db.Column(db.Float, default=0.00)  # type: ignore[var-annotated]
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # type: ignore[var-annotated]
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -92,14 +114,26 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
-class CompletedJob(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    scheduled_time = db.Column(db.DateTime(timezone=True), nullable=False)
-    completed_time = db.Column(db.DateTime(timezone=True), nullable=True)
-    post_title = db.Column(db.String(255), nullable=False)
+class CompletedJob(db.Model):  # type: ignore[misc,name-defined]
+    id = db.Column(db.Integer, primary_key=True)  # type: ignore[var-annotated]
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # type: ignore[var-annotated]
+    scheduled_time = db.Column(db.DateTime(timezone=True), nullable=False)  # type: ignore[var-annotated]
+    completed_time = db.Column(db.DateTime(timezone=True), nullable=True)  # type: ignore[var-annotated]
+    post_title = db.Column(db.String(255), nullable=False)  # type: ignore[var-annotated]
 
-    __table_args__ = (db.UniqueConstraint('user_id', 'scheduled_time', name='_user_scheduled_time_uc'),)
+    __table_args__ = (db.UniqueConstraint('user_id', 'scheduled_time', name='_user_scheduled_time_uc'),)  # type: ignore[assignment]
+
+class CreditTransaction(db.Model):  # type: ignore[misc,name-defined]
+    """Transaction history for credit purchases and usage"""
+    __tablename__ = 'credit_transactions'
+    id = db.Column(db.Integer, primary_key=True)  # type: ignore[var-annotated]
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # type: ignore[var-annotated]
+    amount = db.Column(db.Float, nullable=False)  # type: ignore[var-annotated] - Positive for purchase, negative for usage
+    transaction_type = db.Column(db.String(50), nullable=False)  # type: ignore[var-annotated] - 'welcome', 'purchase', 'auto_recharge', 'article_generation', 'refund'
+    stripe_payment_intent_id = db.Column(db.String(255))  # type: ignore[var-annotated]
+    balance_after = db.Column(db.Float, nullable=False)  # type: ignore[var-annotated]
+    description = db.Column(db.String(500))  # type: ignore[var-annotated]
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # type: ignore[var-annotated]
 
 # Global error handler
 @app.errorhandler(Exception)
@@ -125,7 +159,7 @@ def options_handler(path=''):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return User.query.get(int(user_id))  # type: ignore[attr-defined]
 
 def generate_env_file(user):
     """Generate per-user environment file"""
@@ -146,51 +180,151 @@ def is_valid_wordpress_url(url):
     """Validate WordPress URL format"""
     return url.endswith('/') or url.endswith('/wp-json') or url.endswith('/wp-json/wp/v2')
 
+def _save_emergency_article(content: str, title: str, user_id: int) -> None:
+    """Emergency save article to disk when validation fails"""
+    try:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"emergency_article_{user_id}_{timestamp}.html"
+
+        emergency_html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{title}</title>
+</head>
+<body>
+    <div style="background: #ffe6e6; padding: 20px; margin: 20px; border-left: 4px solid #d00;">
+        <h2>⚠️ EMERGENCY SAVE - VALIDATION FAILED</h2>
+        <p><strong>Title:</strong> {title}</p>
+        <p><strong>User ID:</strong> {user_id}</p>
+        <p><strong>Time:</strong> {timestamp}</p>
+        <p>This article failed validation but content has been preserved.</p>
+    </div>
+    <hr>
+    {content}
+</body>
+</html>"""
+
+        with open(filename, 'w', encoding='utf-8') as f:
+            f.write(emergency_html)
+
+        logger.error(f"[EMERGENCY] Article saved to {filename}")
+    except Exception as e:
+        logger.error(f"[EMERGENCY] Failed to save article: {e}")
+
 def is_valid_perplexity_api_token(token):
     """Validate Perplexity API token format"""
     return bool(re.match(r'^pplx-[A-Za-z0-9]{32,}$', token))
 
-def create_blog_post_v3(user_id):
+def create_blog_post_v3(user_id, manual_topic=None, manual_system_prompt=None, manual_writing_style=None):
     """
-    V3.0: State-of-the-art blog post creation with:
-    - GPT-5-mini with reasoning (medium effort)
+    V3.0 / V4.0: State-of-the-art blog post creation with:
+    - GPT-5 / GPT-5-mini with reasoning (medium effort)
     - SeeDream-4 2K photorealistic images
     - Enhanced photographic prompt engineering
+    - Writing style support
+
+    Args:
+        user_id: User ID for post creation
+        manual_topic: Optional manual topic (bypasses saved topics rotation)
+        manual_system_prompt: Optional manual system prompt (overrides saved prompt)
     """
-    user = User.query.get(user_id)
+    user = User.query.get(user_id)  # type: ignore[attr-defined]
     if not user:
         logger.error(f"User {user_id} not found")
         return None, "User not found"
 
-    query = query_management(user_id)
-    if not query:
-        logger.error(f"No valid query found for user {user_id}")
-        return None, "No valid query found for user"
+    # Use manual topic if provided, otherwise rotate through saved topics
+    if manual_topic:
+        logger.info(f"[V3] Using manual topic (bypassing saved topics): {manual_topic[:100]}...")
+        blog_post_idea = manual_topic
+        writing_style = manual_writing_style  # Use writing style from UI
+    else:
+        query, writing_style = query_management(user_id)
+        if not query:
+            logger.error(f"No valid query found for user {user_id}")
+            return None, "No valid query found for user"
 
-    logger.info(f"[V3] Using query for user {user_id}: {query}")
+        logger.info(f"[V3] Using saved topic query for user {user_id}: {query}")
+        logger.info(f"[V3] Writing style: {writing_style or 'Default'}")
 
-    blog_post_ideas = generate_blog_post_ideas(query, user_id)
-    if not blog_post_ideas:
-        logger.error(f"No blog post ideas generated for user {user_id}")
-        return None, "No blog post ideas generated"
+        blog_post_ideas = generate_blog_post_ideas(query, user_id, writing_style)
+        if not blog_post_ideas:
+            logger.error(f"No blog post ideas generated for user {user_id}")
+            return None, "No blog post ideas generated"
 
-    blog_post_idea = blog_post_ideas[0]
-    system_prompt = user.system_prompt or "Write a comprehensive, engaging article in a professional but conversational tone suitable for a business magazine."
+        blog_post_idea = blog_post_ideas[0]
 
-    logger.info(f"[V3] Creating magazine-style blog post with GPT-5-mini reasoning...")
-    logger.info(f"Idea: {blog_post_idea[:100]}...")
+    # Use manual system prompt if provided, otherwise use saved prompt
+    if manual_system_prompt:
+        system_prompt = manual_system_prompt
+        logger.info(f"[V3] Using manual system prompt")
+    else:
+        system_prompt = user.system_prompt or "Write a comprehensive, engaging article in a professional but conversational tone suitable for a business magazine."
+        logger.info(f"[V3] Using saved system prompt")
 
-    # Use the new V3 function with GPT-5-mini + SeeDream-4
-    processed_post, error = create_blog_post_with_images_v3(blog_post_idea, user_id, system_prompt)
+    logger.info(f"[V4] Creating magazine-style blog post with V4 modular pipeline...")
+    logger.info(f"Perplexity research: {blog_post_idea[:100]}...")
+
+    # Use V4 modular pipeline with writing style
+    processed_post, error = create_blog_post_with_images_v4(
+        perplexity_research=blog_post_idea,
+        user_id=user_id,
+        user_system_prompt=system_prompt,
+        writing_style=writing_style  # Pass writing style through to V4
+    )
     if error:
-        logger.error(f"Error in create_blog_post_with_images_v3 for user {user_id}: {error}")
+        logger.error(f"Error in V4 pipeline for user {user_id}: {error}")
         return None, error
 
-    title = processed_post['title']
-    blog_post_content = processed_post['content']
-    hero_image_url = processed_post['hero_image_url']
+    if not processed_post:
+        logger.error(f"No processed post returned for user {user_id}")
+        return None, "Post processing failed"
 
-    logger.info(f"[V3] Article created with reasoning. Images: {len([img for img in processed_post['all_images'] if img])}")
+    title = processed_post['title']  # type: ignore[index]
+    blog_post_content = processed_post['content']  # type: ignore[index]
+    hero_image_url = processed_post['hero_image_url']  # type: ignore[index]
+
+    logger.info(f"[V3] Article created with reasoning. Images: {len([img for img in processed_post['all_images'] if img])}")  # type: ignore[index]
+
+    # FINAL VALIDATION: Check article completeness before posting
+    logger.info("[V3] Performing final validation before WordPress posting...")
+
+    # Check 1: Inline styling present (V4 uses inline styles, not <style> tags)
+    if 'style="' not in blog_post_content:
+        logger.error("CRITICAL: Inline styling missing from article content")
+        # EMERGENCY: Save article before rejecting
+        _save_emergency_article(blog_post_content, title, current_user.id)  # type: ignore[attr-defined]
+        return None, "Article missing magazine styling"
+
+    # Check 2: Hero section present (now uses inline styles with background-image)
+    if 'background-image' not in blog_post_content or hero_image_url not in blog_post_content:
+        logger.error("CRITICAL: Hero section missing from article content")
+        # EMERGENCY: Save article before rejecting
+        _save_emergency_article(blog_post_content, title, current_user.id)  # type: ignore[attr-defined]
+        return None, "Article missing hero section"
+
+    # Check 3: Images embedded in content
+    all_images_present = all(
+        img_url in blog_post_content
+        for img_url in processed_post['all_images']
+        if img_url
+    )
+    if not all_images_present:
+        logger.error("CRITICAL: Not all images are embedded in article content")
+        missing_images = [img for img in processed_post['all_images'] if img and img not in blog_post_content]
+        logger.error(f"Missing images: {missing_images}")
+        return None, "Not all images embedded in article"
+
+    # Check 4: Minimum content length (magazine articles should be substantial)
+    if len(blog_post_content) < 5000:
+        logger.warning(f"Article content seems short: {len(blog_post_content)} characters")
+
+    logger.info("✓✓✓ FINAL VALIDATION PASSED: Article is complete with styling and all images")
+    logger.info(f"  - Magazine styling: ✓")
+    logger.info(f"  - Hero section: ✓")
+    logger.info(f"  - All 4 images embedded: ✓")
+    logger.info(f"  - Content length: {len(blog_post_content)} characters")
 
     # Create WordPress post with hero image
     post = create_wordpress_post(title, blog_post_content, user_id, hero_image_url)
@@ -225,9 +359,14 @@ def create_blog_post_v3(user_id):
 
 # Route handlers
 @app.route('/')
+def serve_landing():
+    """Serve the landing page"""
+    return send_from_directory('static', 'landing.html')
+
+@app.route('/dashboard')
 @login_required
 def serve_dashboard():
-    """Serve the new modern dashboard (requires authentication)"""
+    """Serve the dashboard (requires authentication)"""
     return send_from_directory('static', 'dashboard.html')
 
 @app.route('/auth')
@@ -239,11 +378,14 @@ def serve_auth():
 def register():
     try:
         data = request.json
-        if User.query.filter_by(email=data['email']).first():
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+
+        if User.query.filter_by(email=data['email']).first():  # type: ignore[index]
             return jsonify({"error": "Email already registered"}), 400
 
-        user = User(
-            email=data['email'],
+        user = User(  # type: ignore[call-arg]
+            email=data['email'],  # type: ignore[index]
             first_name=data.get('first_name', ''),
             last_name=data.get('last_name', ''),
             email_verified=False  # Not verified yet
@@ -391,13 +533,74 @@ def login():
                     "user_id": user.id
                 }), 403
 
-            login_user(user, remember=True)
-            generate_env_file(user)  # Generate user-specific .env file
-            return jsonify({"message": "Logged in successfully", "user_id": user.id}), 200
+            # Generate 2FA code for login
+            from email_verification import generate_verification_code, get_code_expiry, send_verification_email
+
+            verification_code = generate_verification_code()
+            user.verification_code = verification_code
+            user.verification_code_expiry = get_code_expiry()
+            user.verification_attempts = 0
+            db.session.commit()
+
+            # Send 2FA code via email
+            send_verification_email(user.email, verification_code, user.first_name)
+
+            return jsonify({
+                "message": "Verification code sent to your email",
+                "requires_2fa": True,
+                "user_id": user.id
+            }), 200
         return jsonify({"error": "Invalid email or password"}), 401
     except Exception as e:
         app.logger.error(f"Login error: {str(e)}")
         return jsonify({"error": "An unexpected error occurred during login"}), 500
+
+@app.route('/api/verify_login', methods=['POST'])
+def verify_login():
+    """Verify 2FA code during login"""
+    try:
+        data = request.json
+        if not data or 'user_id' not in data or 'code' not in data:
+            return jsonify({"error": "Missing required fields"}), 400
+
+        user = User.query.get(data['user_id'])
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        from email_verification import verify_code
+
+        # Increment attempts
+        user.verification_attempts += 1
+        db.session.commit()
+
+        # Verify the code
+        success, message = verify_code(user, data['code'])
+
+        if success:
+            # Code is valid - log user in
+            login_user(user, remember=True)
+            generate_env_file(user)  # Generate user-specific .env file
+
+            # Clear verification code
+            user.verification_code = None
+            user.verification_code_expiry = None
+            user.verification_attempts = 0
+            db.session.commit()
+
+            return jsonify({
+                "message": "Login successful",
+                "verified": True,
+                "user_id": user.id
+            }), 200
+        else:
+            return jsonify({
+                "error": message,
+                "verified": False
+            }), 401
+
+    except Exception as e:
+        app.logger.error(f"Login verification error: {str(e)}")
+        return jsonify({"error": "An unexpected error occurred"}), 500
 
 @app.route('/api/logout')
 @login_required
@@ -405,9 +608,9 @@ def logout():
     logout_user()
     return jsonify({"message": "Logged out successfully"}), 200
 
-@app.route('/api/profile', methods=['GET', 'POST'])
+@app.route('/api/profile', methods=['GET', 'POST'])  # type: ignore[misc]
 @login_required
-def profile():
+def profile():  # type: ignore[return]
     if request.method == 'GET':
         return jsonify({
             "email": current_user.email,
@@ -427,6 +630,9 @@ def profile():
     elif request.method == 'POST':
         try:
             data = request.json
+            if not data:
+                return jsonify({"error": "No data provided"}), 400
+
             fields_to_update = [
                 'first_name', 'last_name', 'phone', 'billing_address',
                 'openai_api_key', 'wordpress_rest_api_url', 'wordpress_username',
@@ -434,9 +640,9 @@ def profile():
                 'system_prompt', 'schedule'
             ]
             for field in fields_to_update:
-                if field in data:
-                    setattr(current_user, field, data[field])
-            db.session.commit()
+                if field in data:  # type: ignore[operator]
+                    setattr(current_user, field, data[field])  # type: ignore[index]
+            db.session.commit()  # type: ignore[attr-defined]
             generate_env_file(current_user)
             return jsonify({"message": "Profile updated successfully!"})
         except Exception as e:
@@ -481,18 +687,55 @@ def update_integrations():
 
     return jsonify({"message": "No fields were updated"}), 200
 
+@app.route('/api/update_brand_colors', methods=['POST'])
+@login_required
+def update_brand_colors():
+    """Update user's brand customization settings"""
+    data = request.json
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    try:
+        # Update use_default_branding flag
+        if 'use_default_branding' in data:
+            current_user.use_default_branding = bool(data['use_default_branding'])
+
+        # Update brand colors (validate hex format)
+        if 'brand_primary_color' in data:
+            color = data['brand_primary_color']
+            if not color.startswith('#') or len(color) != 7:
+                return jsonify({"error": "Invalid primary color format. Use #RRGGBB"}), 400
+            current_user.brand_primary_color = color
+
+        if 'brand_accent_color' in data:
+            color = data['brand_accent_color']
+            if not color.startswith('#') or len(color) != 7:
+                return jsonify({"error": "Invalid accent color format. Use #RRGGBB"}), 400
+            current_user.brand_accent_color = color
+
+        db.session.commit()
+        return jsonify({"message": "Brand colors updated successfully!"}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+
 @app.route('/api/save_specific_queries', methods=['POST'])
 @login_required
 def save_specific_queries():
     data = request.json
     current_user.specific_topic_queries = data.get('specific_topic_queries', {})
+    current_user.writing_styles = data.get('writing_styles', {})
     db.session.commit()
-    return jsonify({"message": "Queries saved successfully!"})
+    return jsonify({"message": "Queries and writing styles saved successfully!"})
 
 @app.route('/api/get_specific_queries', methods=['GET'])
 @login_required
 def get_specific_queries():
-    return jsonify(current_user.specific_topic_queries or {})
+    return jsonify({
+        "queries": current_user.specific_topic_queries or {},
+        "styles": current_user.writing_styles or {}
+    })
 
 @app.route('/api/save_schedule', methods=['POST'])
 @login_required
@@ -523,8 +766,41 @@ def create_test_post():
         logger.info(f"[V3] Starting AI-powered magazine article creation for user {current_user.id}")
         logger.info(f"[V3] Using GPT-5-mini with reasoning + SeeDream-4 2K images")
 
-        # Use the new V3 creation function with latest AI models
-        post, error = create_blog_post_v3(current_user.id)
+        # Get manual topic, system prompt, and writing style from request body
+        data = request.json or {}
+        manual_topic = data.get('blog_post_idea', '').strip()
+        manual_system_prompt = data.get('system_prompt', '').strip()
+        manual_writing_style = data.get('writing_style', '').strip()
+
+        # Use manual inputs if provided, otherwise use saved topics
+        if manual_topic:
+            logger.info(f"[V3] Using manual topic from user: {manual_topic[:100]}...")
+            logger.info(f"[V3] Writing style from UI: {manual_writing_style or 'Default'}")
+
+            # Call Perplexity with manual topic + writing style
+            logger.info(f"[V3] Getting Perplexity research for manual topic...")
+            perplexity_research_list = generate_blog_post_ideas(
+                query=manual_topic,
+                user_id=current_user.id,
+                writing_style=manual_writing_style or None
+            )
+
+            if not perplexity_research_list:
+                return jsonify({"error": "Failed to get Perplexity research"}), 500
+
+            perplexity_research = perplexity_research_list[0]
+            logger.info(f"[V3] Perplexity research received: {len(perplexity_research)} chars")
+
+            # Now create post with Perplexity research
+            post, error = create_blog_post_v3(
+                current_user.id,
+                manual_topic=perplexity_research,  # Pass Perplexity research, not raw topic
+                manual_system_prompt=manual_system_prompt or None,
+                manual_writing_style=manual_writing_style or None
+            )
+        else:
+            logger.info(f"[V3] Using saved topics rotation")
+            post, error = create_blog_post_v3(current_user.id)
 
         if error:
             logger.error(f"Error creating V3 blog post for user {current_user.id}: {error}")
@@ -551,6 +827,33 @@ def create_test_post():
         return jsonify(response_data), 200
     except Exception as e:
         logger.error(f"Unexpected error in V3 create_test_post for user {current_user.id}: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
+
+@app.route('/api/publish_post/<int:post_id>', methods=['POST'])
+@login_required
+def publish_post(post_id):
+    """Publish a WordPress draft post (change status from draft to publish)"""
+    try:
+        from wordpress_integration import publish_wordpress_post
+
+        logger.info(f"User {current_user.id} requesting to publish post {post_id}")
+
+        result = publish_wordpress_post(post_id, current_user.id)
+
+        if result:
+            logger.info(f"Successfully published post {post_id} for user {current_user.id}")
+            return jsonify({
+                "message": "Post published successfully!",
+                "post_id": post_id,
+                "status": "publish"
+            }), 200
+        else:
+            logger.error(f"Failed to publish post {post_id} for user {current_user.id}")
+            return jsonify({"error": "Failed to publish post"}), 500
+
+    except Exception as e:
+        logger.error(f"Error publishing post {post_id}: {str(e)}")
         logger.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
 

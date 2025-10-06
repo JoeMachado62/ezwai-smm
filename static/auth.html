@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EZWAI SMM - Login</title>
+    <link rel="icon" type="image/webp" href="/static/ezwai icon portal copy.webp">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -15,12 +16,14 @@
 
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #08b0c4 0%, #06899a 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
+            margin: 0;
+            position: relative;
         }
 
         .auth-container {
@@ -37,13 +40,21 @@
             margin-bottom: 40px;
         }
 
+        .logo-image {
+            max-width: 280px;
+            width: 100%;
+            height: auto;
+            margin-bottom: 20px;
+        }
+
         .logo h1 {
             font-size: 2.5em;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #08b0c4 0%, #ff6b11 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
             margin-bottom: 10px;
+            display: none; /* Hide text since we have logo image */
         }
 
         .logo p {
@@ -70,7 +81,7 @@
         }
 
         .tab.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #ff6b11 0%, #e55a00 100%);
             color: white;
         }
 
@@ -105,13 +116,13 @@
 
         .form-group input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #08b0c4;
         }
 
         .submit-btn {
             width: 100%;
             padding: 16px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #ff6b11 0%, #e55a00 100%);
             color: white;
             border: none;
             border-radius: 12px;
@@ -164,6 +175,7 @@
 <body>
     <div class="auth-container">
         <div class="logo">
+            <img src="/static/EZWai logo  and Tagline.png" alt="EZWAI SMM" class="logo-image">
             <h1>EZWAI SMM</h1>
             <p>AI-Powered Content Automation</p>
         </div>
@@ -219,10 +231,10 @@
             </div>
         </div>
 
-        <!-- Email Verification Form -->
+        <!-- Email Verification Form (Registration) -->
         <div id="verify-form" class="form-content">
             <div style="text-align: center; margin-bottom: 20px;">
-                <h3 style="color: #667eea;">Check Your Email</h3>
+                <h3 style="color: #08b0c4;">Check Your Email</h3>
                 <p style="color: #666;">We sent a 6-digit verification code to<br><strong id="verify-email-display"></strong></p>
             </div>
             <form onsubmit="handleVerification(event)">
@@ -233,7 +245,25 @@
                 <button type="submit" class="submit-btn" id="verify-btn">Verify Email</button>
             </form>
             <div class="form-footer">
-                Didn't receive the code? <a href="#" onclick="resendCode(event)" style="color: #667eea; text-decoration: none; font-weight: 600;">Resend Code</a>
+                Didn't receive the code? <a href="#" onclick="resendCode(event)" style="color: #08b0c4; text-decoration: none; font-weight: 600;">Resend Code</a>
+            </div>
+        </div>
+
+        <!-- 2FA Login Verification Form -->
+        <div id="login-verify-form" class="form-content">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h3 style="color: #08b0c4;">🔐 Two-Factor Authentication</h3>
+                <p style="color: #666;">We sent a 6-digit verification code to<br><strong id="login-verify-email-display"></strong></p>
+            </div>
+            <form onsubmit="handleLoginVerification(event)">
+                <div class="form-group">
+                    <label for="login-verification-code">Verification Code</label>
+                    <input type="text" id="login-verification-code" required pattern="[0-9]{6}" maxlength="6" placeholder="000000" style="text-align: center; font-size: 1.5em; letter-spacing: 0.3em;">
+                </div>
+                <button type="submit" class="submit-btn" id="login-verify-btn">Verify & Login</button>
+            </form>
+            <div class="form-footer">
+                Didn't receive the code? <a href="#" onclick="resendLoginCode(event)" style="color: #08b0c4; text-decoration: none; font-weight: 600;">Resend Code</a>
             </div>
         </div>
     </div>
@@ -285,11 +315,18 @@
 
                 const data = await response.json();
 
-                if (response.ok) {
-                    showAlert('Login successful! Redirecting...', 'success');
-                    setTimeout(() => {
-                        window.location.href = '/';
-                    }, 1000);
+                if (response.ok && data.requires_2fa) {
+                    // 2FA required - show login verification form
+                    currentUserId = data.user_id;
+                    currentUserEmail = email;
+
+                    document.getElementById('login-verify-email-display').textContent = email;
+                    document.querySelectorAll('.form-content').forEach(f => f.classList.remove('active'));
+                    document.getElementById('login-verify-form').classList.add('active');
+
+                    showAlert('Verification code sent! Check your email.', 'success');
+                    btn.disabled = false;
+                    btn.textContent = 'Login';
                 } else if (response.status === 403 && data.requires_verification) {
                     // Email not verified - show verification form
                     currentUserId = data.user_id;
@@ -311,6 +348,75 @@
                 showAlert('Network error. Please try again.', 'error');
                 btn.disabled = false;
                 btn.textContent = 'Login';
+            }
+        }
+
+        async function handleLoginVerification(event) {
+            event.preventDefault();
+
+            const code = document.getElementById('login-verification-code').value;
+            const btn = document.getElementById('login-verify-btn');
+
+            btn.disabled = true;
+            btn.textContent = 'Verifying...';
+
+            try {
+                const response = await fetch('/api/verify_login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        user_id: currentUserId,
+                        code: code
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.verified) {
+                    showAlert('Login successful! Redirecting...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 1000);
+                } else {
+                    showAlert(data.error || 'Verification failed', 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Verify & Login';
+                    document.getElementById('login-verification-code').value = '';
+                }
+            } catch (error) {
+                showAlert('Network error. Please try again.', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Verify & Login';
+            }
+        }
+
+        async function resendLoginCode(event) {
+            event.preventDefault();
+
+            try {
+                const response = await fetch('/api/resend_verification', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        user_id: currentUserId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert('New verification code sent!', 'success');
+                } else {
+                    showAlert(data.error || 'Failed to resend code', 'error');
+                }
+            } catch (error) {
+                showAlert('Network error. Please try again.', 'error');
             }
         }
 
@@ -459,7 +565,7 @@
                 });
                 if (response.ok || response.type === 'basic') {
                     // Already logged in, redirect to dashboard
-                    window.location.href = '/';
+                    window.location.href = '/dashboard';
                 }
             } catch (error) {
                 // Not logged in, stay on auth page
