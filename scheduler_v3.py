@@ -47,14 +47,17 @@ def create_blog_post(user_id):
                 logger.error(f"No blog post ideas generated for user {user_id}")
                 return None, "No blog post ideas generated"
 
-            blog_post_idea = blog_post_ideas[0]
+            perplexity_research = blog_post_ideas[0]
             system_prompt = user.system_prompt or "Write a comprehensive, engaging article in a professional but conversational tone suitable for a business magazine."
 
             logger.info(f"[V3 Scheduler] Creating magazine-style blog post with GPT-5-mini reasoning...")
-            logger.info(f"Idea: {blog_post_idea[:100]}...")
+            logger.info(f"Research: {perplexity_research[:100]}...")
 
             # Use V4 function with GPT-5-mini + SeeDream-4
-            processed_post, error = create_blog_post_with_images_v4(blog_post_idea, user_id, system_prompt)
+            # V4 signature: (perplexity_research, user_id, user_system_prompt, writing_style)
+            processed_post, error = create_blog_post_with_images_v4(
+                perplexity_research, user_id, system_prompt, writing_style
+            )
             if error:
                 logger.error(f"Error in create_blog_post_with_images_v4 for user {user_id}: {error}")
                 return None, error
