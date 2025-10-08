@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Silent Revolution in Urban Gardens</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Lato:wght@300;400;700&display=swap');
+
+        :root {
+            --brand-color: #d4af37;
+            --accent-color: #2a2a2a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Lato', sans-serif;
+            background: #fefdfb;
+            color: #3a3a3a;
+            line-height: 1.8;
+        }
+        
+        /* Massive hero image */
+        .hero-full {
+            position: relative;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .hero-image-bg {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: brightness(0.6);
+        }
+        
+        .hero-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 80px;
+        }
+        
+        .hero-category {
+            color: var(--brand-color);
+            font-size: 12px;
+            font-weight: 400;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            margin-bottom: 40px;
+        }
+        
+        .hero-overlay h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 6.5em;
+            font-weight: 300;
+            color: #ffffff;
+            line-height: 1.1;
+            margin-bottom: 35px;
+            max-width: 1100px;
+            letter-spacing: 3px;
+        }
+        
+        .hero-subtitle {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.8em;
+            color: rgba(255,255,255,0.95);
+            font-weight: 300;
+            max-width: 750px;
+            line-height: 1.6;
+            font-style: italic;
+        }
+        
+        .gold-line {
+            width: 100px;
+            height: 1px;
+            background: var(--brand-color);
+            margin: 40px 0;
+        }
+        
+        /* Introduction statement */
+        .intro-statement {
+            max-width: 900px;
+            margin: 120px auto;
+            padding: 0 60px;
+            text-align: center;
+        }
+        
+        .intro-statement p {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2.2em;
+            font-weight: 300;
+            line-height: 1.7;
+            color: var(--accent-color);
+            font-style: italic;
+        }
+        
+        /* Side-by-side sections */
+        .side-by-side {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 70vh;
+            align-items: center;
+        }
+        
+        .side-by-side:nth-child(even) {
+            direction: rtl;
+        }
+        
+        .side-by-side:nth-child(even) > * {
+            direction: ltr;
+        }
+        
+        .side-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            min-height: 600px;
+        }
+        
+        .side-content {
+            padding: 80px;
+            background: #fefdfb;
+        }
+        
+        .side-content h2 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 3.5em;
+            font-weight: 300;
+            color: var(--accent-color);
+            margin-bottom: 35px;
+            letter-spacing: 2px;
+        }
+        
+        .side-content p {
+            font-size: 1.15em;
+            line-height: 1.9;
+            margin-bottom: 28px;
+        }
+        
+        /* Stats elegant */
+        .stats-elegant {
+            display: flex;
+            justify-content: space-around;
+            padding: 100px 80px;
+            background: #f8f7f3;
+        }
+        
+        .stat-elegant {
+            text-align: center;
+        }
+        
+        .stat-elegant .number {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 5em;
+            font-weight: 300;
+            color: var(--brand-color);
+            line-height: 1;
+            margin-bottom: 15px;
+        }
+        
+        .stat-elegant .description {
+            font-size: 0.95em;
+            color: #6a6a6a;
+            font-style: italic;
+        }
+        
+        /* Pull quote luxury */
+        .quote-luxury {
+            padding: 120px 80px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .quote-luxury blockquote {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 3em;
+            font-weight: 300;
+            line-height: 1.5;
+            color: var(--accent-color);
+            max-width: 900px;
+            margin: 0 auto;
+            font-style: italic;
+        }
+        
+        .quote-luxury::before,
+        .quote-luxury::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 1px;
+            background: var(--brand-color);
+        }
+        
+        .quote-luxury::before {
+            top: 60px;
+        }
+        
+        .quote-luxury::after {
+            bottom: 60px;
+        }
+        
+        /* Full bleed image */
+        .full-bleed {
+            width: 100%;
+            height: 80vh;
+            object-fit: cover;
+        }
+        
+        /* Ornament */
+        .ornament-center {
+            text-align: center;
+            font-size: 2em;
+            color: var(--brand-color);
+            padding: 60px 0;
+        }
+        
+        @media (max-width: 768px) {
+            .hero-overlay h1 {
+                font-size: 3.2em;
+            }
+            
+            .side-by-side {
+                grid-template-columns: 1fr;
+                min-height: auto;
+            }
+            
+            .side-by-side:nth-child(even) {
+                direction: ltr;
+            }
+            
+            .side-image {
+                min-height: 400px;
+            }
+            
+            .side-content {
+                padding: 50px 30px;
+            }
+            
+            .stats-elegant {
+                flex-direction: column;
+                gap: 50px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="hero-full">
+        <img src="https://ezwai.com/wp-content/uploads/2025/10/a-cinematic-aerial-view-of-a-modern-city-skyline-a.png" alt="Urban garden" class="hero-image-bg">
+        <div class="hero-overlay">
+            <div class="hero-category">Urban Living</div>
+            <div class="gold-line"></div>
+            <h1>The Silent Revolution in Urban Gardens</h1>
+            <p class="hero-subtitle">How rooftop farming is transforming concrete jungles into sustainable food sources</p>
+        </div>
+    </div>
+
+    <div class="intro-statement">
+        <p>In the heart of Brooklyn, high above the bustling streets, a new kind of sanctuary takes root—one that feeds both body and soul.</p>
+    </div>
+
+    <div class="side-by-side">
+        <img src="placeholder-farmer-harvesting.jpg" alt="Farmer at work" class="side-image">
+        <div class="side-content">
+            <h2>A Quiet Revolution</h2>
+            <p>Sarah Chen stands on the roof of a Brooklyn warehouse, surveying rows of vibrant lettuce, tomatoes, and herbs that stretch across what was once barren tar paper. This is no hobby garden—it's a commercial farm producing 50,000 pounds of produce annually.</p>
+            <p>The concept isn't new, but the scale and sophistication are. What began as scattered experiments by urban enthusiasts has evolved into a legitimate agricultural movement, with rooftop farms now operating in over 100 major cities worldwide.</p>
+        </div>
+    </div>
+
+    <div class="stats-elegant">
+        <div class="stat-elegant">
+            <div class="number">4×</div>
+            <div class="description">Higher yield than traditional farming</div>
+        </div>
+        <div class="stat-elegant">
+            <div class="number">30%</div>
+            <div class="description">Reduction in energy costs</div>
+        </div>
+        <div class="stat-elegant">
+            <div class="number">5,000</div>
+            <div class="description">Full-time positions created</div>
+        </div>
+    </div>
+
+    <div class="side-by-side">
+        <div class="side-content">
+            <h2>Reclaiming Space</h2>
+            <p>"We're essentially reclaiming wasted space," Chen explains, pulling a ripe tomato from a vine. "Most urban buildings have flat roofs that do nothing but absorb heat. We're turning them into productive ecosystems that nourish communities."</p>
+            <p>These elevated gardens are addressing multiple urban challenges simultaneously: food deserts, stormwater management, urban heat islands, and carbon emissions from food transportation.</p>
+        </div>
+        <img src="placeholder-irrigation-system.jpg" alt="Smart systems" class="side-image">
+    </div>
+
+    <div class="quote-luxury">
+        <blockquote>
+            We're not just growing food. We're cultivating communities and reimagining urban life.
+        </blockquote>
+    </div>
+
+    <img src="placeholder-city-sunset.jpg" alt="Urban skyline" class="full-bleed">
+
+    <div class="side-by-side">
+        <img src="placeholder-rooftop-garden-aerial.jpg" alt="Garden overview" class="side-image">
+        <div class="side-content">
+            <h2>Technology & Nature</h2>
+            <p>The numbers tell a compelling story. A single acre of rooftop farming can produce the same yield as four acres of traditional rural farmland, thanks to controlled growing conditions and year-round cultivation.</p>
+            <p>Modern rooftop farms employ sophisticated irrigation systems that use 90% less water than traditional agriculture. Sensors monitor soil conditions in real-time, adjusting water and nutrients automatically.</p>
+        </div>
+    </div>
+
+    <div class="ornament-center">✦ ✦ ✦</div>
+
+    <div class="side-by-side">
+        <div class="side-content">
+            <h2>The Future</h2>
+            <p>The economic model is proving viable too. While startup costs are significant, farms typically achieve profitability within three to five years. Premium pricing for ultra-fresh, locally-grown produce helps.</p>
+            <p>As Chen locks up for the evening, she reflects on the broader implications. "Ten years ago, people thought we were crazy. Now, city planners are calling us. The question isn't whether urban farming will grow—it's how fast."</p>
+        </div>
+        <img src="placeholder-farmer-harvesting.jpg" alt="Sunset harvest" class="side-image">
+    </div>
+</body>
+</html>

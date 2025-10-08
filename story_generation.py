@@ -19,7 +19,7 @@ def load_user_env(user_id: int) -> None:
     """Load user-specific environment variables."""
     env_file = f".env.user_{user_id}"
     if os.path.exists(env_file):
-        load_dotenv(env_file)
+        load_dotenv(env_file, override=True)  # CRITICAL: Override existing env vars
         logger.debug(f"Loaded environment for user {user_id}")
     else:
         logger.error(f"Environment file for user {user_id} not found")

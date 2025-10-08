@@ -18,32 +18,37 @@ def load_user_env(user_id):
     """Load user-specific environment variables."""
     env_file = f'.env.user_{user_id}'
     if os.path.exists(env_file):
-        load_dotenv(env_file)
+        load_dotenv(env_file, override=True)  # CRITICAL: Override existing env vars
         logger.debug(f"Loaded environment for user {user_id}")
     else:
         logger.error(f"Environment file for user {user_id} not found")
 
 def query_management(user_id):
-    """Manage and rotate through user-specific queries."""
+    """Manage and rotate through user-specific queries. Returns tuple (query, writing_style)."""
     from app_v3 import User  # Import User model here to avoid circular imports
-    
+
     user = User.query.get(user_id)
     if not user:
         logger.error(f"User {user_id} not found")
-        return None
+        return None, None
 
     if not user.specific_topic_queries:
         logger.warning(f"No specific topic queries found for user {user_id}")
-        return None
+        return None, None
 
     max_queries = 10
     start_index = user.last_query_index
-    
+
     for i in range(max_queries):
         next_index = (start_index + i) % max_queries + 1  # Add 1 because queries are 1-indexed
         next_query = user.specific_topic_queries.get(str(next_index))
 
         if next_query:
+            # Get corresponding writing style
+            writing_style = None
+            if user.writing_styles:
+                writing_style = user.writing_styles.get(str(next_index))
+
             # Update last_query_index
             user.last_query_index = next_index
             try:
@@ -55,35 +60,69 @@ def query_management(user_id):
                 logger.exception(e)
 
             logger.info(f"Selected query {next_index} for user {user_id}: {next_query}")
-            return next_query
+            logger.info(f"Selected writing style: {writing_style or 'None (default)'}")
+            return next_query, writing_style
 
     logger.warning(f"No non-empty queries found for user {user_id}")
-    return None
+    return None, None
 
-def generate_blog_post_ideas(query, user_id):
-    """Generate blog post ideas using the Perplexity AI API."""
+def generate_blog_post_ideas(query, user_id, writing_style=None):
+    """Generate blog post ideas using the Perplexity AI API with enhanced prompts based on writing style."""
     load_user_env(user_id)
     api_key = os.getenv('PERPLEXITY_AI_API_TOKEN')
-    
+
     if not api_key:
         logger.error(f"Perplexity API token not found for user {user_id}")
         return []
 
     logger.debug(f"Perplexity API token (first 5 chars): {api_key[:5]}...")
-    
+
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
-    
-    logger.info(f"Generating blog post idea for query: {query}")
+
+    # Enhanced system prompt based on writing style
+    base_system = "You are an expert research journalist who provides comprehensive, in-depth research for professional writers. Whenever possible you will include real life case studies and examples if it makes sense for the topic or story type."
+
+    if writing_style:
+        system_prompt = f"{base_system} The article will be written in a {writing_style} style. Provide detailed research, statistics, expert quotes, case studies, and recent developments that support this writing approach."
+    else:
+        system_prompt = base_system
+
+    # Enhanced user prompt to extract maximum value per API call
+    if writing_style:
+        user_prompt = f"""Find the top trending news story regarding: {query} and provide comprehensive research content for editors to create a Pulitzer prize-winning article written in the style of {writing_style}.
+
+Include:
+- Latest statistics and data points with sources
+- Expert opinions and quotable statements
+- Recent case studies or real-world examples
+- Key trends and developments
+- Relevant background context
+- Industry implications and future outlook
+- Specific facts that support the {writing_style} approach"""
+    else:
+        user_prompt = f"""Find the top trending news story regarding: {query} and provide comprehensive research content.
+
+Include:
+- Latest statistics and data points with sources
+- Expert opinions and quotable statements
+- Recent case studies or real-world examples
+- Key trends and developments
+- Relevant background context
+- Industry implications and future outlook"""
+
+    logger.info(f"Generating enhanced blog post research for query: {query}")
+    logger.info(f"Writing style: {writing_style or 'Default'}")
+
     data = {
         "model": "sonar",
         "messages": [
-            {"role": "system", "content": "You are an experienced news reporter specializing in identifying trending news and providing brief concise summaries for your editor."},
-            {"role": "user", "content": f"Summarize the top trending news story regarding: {query}"}
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
         ],
-        "max_tokens": 500,
+        "max_tokens": 2000,  # Increased from 500 to get more value per call
         "temperature": 0.2,
         "top_p": 0.9,
         "return_citations": True,

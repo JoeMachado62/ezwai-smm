@@ -421,7 +421,7 @@ def load_user_env(user_id: int) -> None:
     """Load user-specific environment variables."""
     env_file = f".env.user_{user_id}"
     if os.path.exists(env_file):
-        load_dotenv(env_file)
+        load_dotenv(env_file, override=True)  # CRITICAL: Override existing env vars
 
 
 def insert_component_after_paragraph(soup: BeautifulSoup, paragraph_index: int, component_html: str):

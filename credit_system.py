@@ -28,6 +28,14 @@ def check_sufficient_credits(user) -> Tuple[bool, str]:
     Returns:
         Tuple of (has_credits: bool, message: str)
     """
+    # Admin users have unlimited credits
+    if user.is_admin:
+        return True, ""
+
+    # Handle legacy users with NULL credit_balance
+    if user.credit_balance is None:
+        return False, f"Credit balance not initialized. Please contact support or run migration script."
+
     if user.credit_balance >= ARTICLE_COST:
         return True, ""
     else:
@@ -49,22 +57,36 @@ def deduct_credits(user, db) -> bool:
     from app_v3 import CreditTransaction
 
     try:
-        user.credit_balance -= ARTICLE_COST
+        # Handle legacy users with NULL fields
+        if user.credit_balance is None:
+            user.credit_balance = 0.00
+        if user.total_articles_generated is None:
+            user.total_articles_generated = 0
+        if user.total_spent is None:
+            user.total_spent = 0.00
+
+        # Admin users don't get charged (unlimited credits)
+        if not user.is_admin:
+            user.credit_balance -= ARTICLE_COST
+            user.total_spent += ARTICLE_COST
+
         user.total_articles_generated += 1
-        user.total_spent += ARTICLE_COST
 
         # Log transaction
         transaction = CreditTransaction(
             user_id=user.id,
-            amount=-ARTICLE_COST,
-            transaction_type='article_generation',
+            amount=-ARTICLE_COST if not user.is_admin else 0,
+            transaction_type='article_generation' if not user.is_admin else 'admin_article_generation',
             balance_after=user.credit_balance,
-            description=f'Article generation (#{user.total_articles_generated})'
+            description=f'Article generation (#{user.total_articles_generated})' + (' [ADMIN - FREE]' if user.is_admin else '')
         )
         db.session.add(transaction)
         db.session.commit()
 
-        logger.info(f"[Credits] Deducted ${ARTICLE_COST} from user {user.id}. New balance: ${user.credit_balance:.2f}")
+        if user.is_admin:
+            logger.info(f"[Credits] ADMIN user {user.id} generated article (no charge). Balance unchanged: ${user.credit_balance:.2f}")
+        else:
+            logger.info(f"[Credits] Deducted ${ARTICLE_COST} from user {user.id}. New balance: ${user.credit_balance:.2f}")
 
         # Check if auto-recharge needed
         if user.auto_recharge_enabled and user.credit_balance < user.auto_recharge_threshold:
@@ -93,6 +115,14 @@ def refund_credits(user, db, reason: str = "Article generation failed") -> bool:
     from app_v3 import CreditTransaction
 
     try:
+        # Handle legacy users with NULL fields
+        if user.credit_balance is None:
+            user.credit_balance = 0.00
+        if user.total_articles_generated is None:
+            user.total_articles_generated = 0
+        if user.total_spent is None:
+            user.total_spent = 0.00
+
         user.credit_balance += ARTICLE_COST
         user.total_articles_generated -= 1  # Reverse the increment
         user.total_spent -= ARTICLE_COST

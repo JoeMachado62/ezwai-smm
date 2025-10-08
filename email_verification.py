@@ -1,26 +1,22 @@
 """
 Email verification service for 2FA during registration
-Sends 6-digit verification codes via SMTP
+Sends 6-digit verification codes via SendGrid
 """
-import smtplib
 import random
 import string
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 from dotenv import load_dotenv
 import logging
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail, Email, To, Content
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-# 2FA Configuration
-SMTP_HOST = os.getenv('SMTP_HOST', 'smtp.gmail.com')
-SMTP_PORT = int(os.getenv('SMTP_PORT', 587))
-SMTP_USERNAME = os.getenv('SMTP_USERNAME')
-SMTP_PASSWORD = os.getenv('SMTP_PASSWORD')
-SMTP_FROM_EMAIL = os.getenv('SMTP_FROM_EMAIL', SMTP_USERNAME)
+# 2FA Configuration using SendGrid
+SENDGRID_API_KEY = os.getenv('EMAIL_PASSWORD')  # SendGrid API key from .env
+SMTP_FROM_EMAIL = os.getenv('SMTP_FROM_EMAIL', 'joe@ezwai.com')
 SMTP_FROM_NAME = os.getenv('SMTP_FROM_NAME', 'EZWAI SMM Security')
 
 TWO_FACTOR_CODE_LENGTH = int(os.getenv('TWO_FACTOR_CODE_LENGTH', 6))
@@ -35,7 +31,7 @@ def generate_verification_code():
 
 def get_code_expiry():
     """Get expiration datetime for verification code"""
-    return datetime.utcnow() + timedelta(minutes=TWO_FACTOR_CODE_EXPIRE_MINUTES)
+    return datetime.now(timezone.utc) + timedelta(minutes=TWO_FACTOR_CODE_EXPIRE_MINUTES)
 
 
 def send_verification_email(email, verification_code, first_name=''):
@@ -51,139 +47,135 @@ def send_verification_email(email, verification_code, first_name=''):
         bool: True if email sent successfully, False otherwise
     """
     try:
-        # Create email message
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = 'Verify Your EZWAI SMM Account'
-        msg['From'] = f'{SMTP_FROM_NAME} <{SMTP_FROM_EMAIL}>'
-        msg['To'] = email
-
-        # HTML email template
+        # HTML email template with EZWAI branding
         html = f"""
         <!DOCTYPE html>
         <html>
         <head>
             <style>
                 body {{
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-                    line-height: 1.6;
-                    color: #333;
+                    font-family: 'Arial', sans-serif;
+                    background-color: #f0f2f5;
+                    margin: 0;
+                    padding: 0;
+                }}
+                .container {{
                     max-width: 600px;
-                    margin: 0 auto;
-                    padding: 20px;
+                    margin: 30px auto;
+                    background-color: #ffffff;
+                    border-radius: 20px;
+                    overflow: hidden;
+                    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
                 }}
                 .header {{
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
+                    background: linear-gradient(135deg, #08b0c4 0%, #06899a 100%);
                     padding: 30px;
                     text-align: center;
-                    border-radius: 10px 10px 0 0;
+                    color: white;
+                }}
+                .header h1 {{
+                    margin: 10px 0 0 0;
+                    font-size: 28px;
                 }}
                 .content {{
-                    background: #f8f9fa;
                     padding: 30px;
-                    border-radius: 0 0 10px 10px;
+                    color: #3a3a3a;
+                }}
+                .greeting {{
+                    font-size: 18px;
+                    margin-bottom: 15px;
+                    color: #333;
                 }}
                 .code-box {{
-                    background: white;
-                    border: 2px solid #667eea;
-                    border-radius: 8px;
-                    padding: 20px;
+                    background: linear-gradient(135deg, #08b0c4 0%, #06899a 100%);
+                    border-radius: 12px;
+                    padding: 25px;
                     text-align: center;
-                    margin: 20px 0;
+                    margin: 25px 0;
                 }}
                 .code {{
-                    font-size: 32px;
+                    font-size: 36px;
                     font-weight: bold;
-                    letter-spacing: 8px;
-                    color: #667eea;
+                    letter-spacing: 10px;
+                    color: white;
                     font-family: 'Courier New', monospace;
                 }}
                 .warning {{
                     background: #fff3cd;
-                    border-left: 4px solid #ffc107;
-                    padding: 12px;
+                    border-left: 5px solid #ff6b11;
+                    padding: 15px;
                     margin: 20px 0;
-                    border-radius: 4px;
+                    border-radius: 8px;
+                }}
+                .warning strong {{
+                    color: #ff6b11;
                 }}
                 .footer {{
+                    background-color: #f8f9fa;
+                    padding: 20px;
                     text-align: center;
                     color: #666;
-                    font-size: 12px;
-                    margin-top: 30px;
-                    padding-top: 20px;
-                    border-top: 1px solid #ddd;
+                    font-size: 14px;
+                    border-top: 5px solid #08b0c4;
+                }}
+                .footer p {{
+                    margin: 5px 0;
+                }}
+                .brand-highlight {{
+                    color: #08b0c4;
+                    font-weight: 600;
                 }}
             </style>
         </head>
         <body>
-            <div class="header">
-                <h1>Verify Your Email</h1>
-            </div>
-            <div class="content">
-                <p>Hi{' ' + first_name if first_name else ''},</p>
-
-                <p>Welcome to EZWAI SMM! To complete your registration, please verify your email address using the code below:</p>
-
-                <div class="code-box">
-                    <div class="code">{verification_code}</div>
+            <div class="container">
+                <div class="header">
+                    <h1>🚀 EZWAI SMM</h1>
+                    <p>Verify Your Email Address</p>
                 </div>
+                <div class="content">
+                    <p class="greeting">Hi{' ' + first_name if first_name else ''},</p>
 
-                <p>Enter this code on the verification page to activate your account.</p>
+                    <p>Welcome to <span class="brand-highlight">EZWAI SMM</span>! To complete your registration, please verify your email address using the code below:</p>
 
-                <div class="warning">
-                    <strong>⚠️ Security Notice:</strong><br>
-                    • This code expires in {TWO_FACTOR_CODE_EXPIRE_MINUTES} minutes<br>
-                    • You have {TWO_FACTOR_MAX_ATTEMPTS} attempts to enter the correct code<br>
-                    • If you didn't request this code, please ignore this email
+                    <div class="code-box">
+                        <div class="code">{verification_code}</div>
+                    </div>
+
+                    <p>Enter this code on the verification page to activate your account and start creating amazing AI-powered content.</p>
+
+                    <div class="warning">
+                        <strong>⚠️ Security Notice:</strong><br>
+                        • This code expires in {TWO_FACTOR_CODE_EXPIRE_MINUTES} minutes<br>
+                        • You have {TWO_FACTOR_MAX_ATTEMPTS} attempts to enter the correct code<br>
+                        • If you didn't request this code, please ignore this email
+                    </div>
+
+                    <p>Need help? Contact our support team at joe@ezwai.com</p>
                 </div>
-
-                <p>Need help? Contact our support team.</p>
-            </div>
-            <div class="footer">
-                <p>EZWAI SMM - Automated Social Media Management</p>
-                <p>This is an automated message, please do not reply to this email.</p>
+                <div class="footer">
+                    <p><strong>EZWAI SMM</strong> - AI-Powered Content Automation</p>
+                    <p style="color: #08b0c4;">Automated Social Media Management Made Simple</p>
+                    <p style="font-size: 12px; margin-top: 10px;">This is an automated message, please do not reply to this email.</p>
+                </div>
             </div>
         </body>
         </html>
         """
 
-        # Plain text fallback
-        text = f"""
-        Verify Your Email
+        # Send email via SendGrid
+        sg = SendGridAPIClient(api_key=SENDGRID_API_KEY)
 
-        Hi{' ' + first_name if first_name else ''},
+        from_email = Email(SMTP_FROM_EMAIL, SMTP_FROM_NAME)
+        to_email = To(email)
+        subject = 'Verify Your EZWAI SMM Account'
+        html_content = Content("text/html", html)
 
-        Welcome to EZWAI SMM! To complete your registration, please verify your email address using the code below:
+        mail = Mail(from_email, to_email, subject, html_content)
 
-        Verification Code: {verification_code}
+        response = sg.send(mail)
 
-        Enter this code on the verification page to activate your account.
-
-        SECURITY NOTICE:
-        - This code expires in {TWO_FACTOR_CODE_EXPIRE_MINUTES} minutes
-        - You have {TWO_FACTOR_MAX_ATTEMPTS} attempts to enter the correct code
-        - If you didn't request this code, please ignore this email
-
-        Need help? Contact our support team.
-
-        ---
-        EZWAI SMM - Automated Social Media Management
-        This is an automated message, please do not reply to this email.
-        """
-
-        # Attach both HTML and plain text versions
-        part1 = MIMEText(text, 'plain')
-        part2 = MIMEText(html, 'html')
-        msg.attach(part1)
-        msg.attach(part2)
-
-        # Send email
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-            server.starttls()
-            server.login(SMTP_USERNAME, SMTP_PASSWORD)
-            server.send_message(msg)
-
-        logger.info(f"Verification email sent successfully to {email}")
+        logger.info(f"Verification email sent successfully to {email}. Status code: {response.status_code}")
         return True
 
     except Exception as e:
@@ -195,7 +187,15 @@ def is_code_valid(code_expiry):
     """Check if verification code is still valid (not expired)"""
     if not code_expiry:
         return False
-    return datetime.utcnow() < code_expiry
+
+    # Get current time
+    now = datetime.now(timezone.utc)
+
+    # If code_expiry is timezone-naive (from database), make it timezone-aware
+    if code_expiry.tzinfo is None:
+        code_expiry = code_expiry.replace(tzinfo=timezone.utc)
+
+    return now < code_expiry
 
 
 def verify_code(user, submitted_code):

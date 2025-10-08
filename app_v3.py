@@ -183,12 +183,19 @@ def load_user(user_id):
     return User.query.get(int(user_id))  # type: ignore[attr-defined]
 
 def generate_env_file(user):
-    """Generate per-user environment file"""
-    env_content = f"""OPENAI_API_KEY="{user.openai_api_key}"
-WORDPRESS_REST_API_URL="{user.wordpress_rest_api_url}"
-WORDPRESS_USERNAME="{user.wordpress_username}"
-WORDPRESS_PASSWORD="{user.wordpress_password}"
-PERPLEXITY_AI_API_TOKEN="{user.perplexity_api_token}"
+    """
+    Generate per-user environment file - ONLY WordPress credentials.
+
+    OpenAI, Perplexity, and Replicate API keys are centralized in main .env file.
+    This prevents user env files from overriding the admin's centralized keys.
+    """
+    env_content = f"""# WordPress credentials (per-user)
+WORDPRESS_REST_API_URL="{user.wordpress_rest_api_url or ''}"
+WORDPRESS_USERNAME="{user.wordpress_username or ''}"
+WORDPRESS_PASSWORD="{user.wordpress_password or ''}"
+
+# NOTE: OpenAI, Perplexity, and Replicate keys are centralized in main .env
+# Do NOT add them here - they will override the system keys!
 """
     with open(f'.env.user_{user.id}', 'w') as f:
         f.write(env_content)

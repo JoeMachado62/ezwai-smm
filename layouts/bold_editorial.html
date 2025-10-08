@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Silent Revolution in Urban Gardens</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+Pro:wght@400;600;700&display=swap');
+
+        :root {
+            --brand-color: #ff234b;
+            --accent-color: #ffd700;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Source Sans Pro', sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+        
+        /* Dramatic full-screen cover */
+        .cover {
+            height: 100vh;
+            background: url('placeholder-rooftop-garden-aerial.jpg') center/cover fixed;
+            position: relative;
+            display: flex;
+            align-items: flex-end;
+            padding: 80px;
+        }
+        
+        .cover::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(10,10,10,0.98) 0%, transparent 60%);
+        }
+        
+        .cover-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+        }
+        
+        .cover .tag {
+            color: var(--brand-color);
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            margin-bottom: 25px;
+        }
+        
+        .cover h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 7.5em;
+            line-height: 0.85;
+            margin-bottom: 30px;
+            letter-spacing: 3px;
+        }
+        
+        .cover .subtitle {
+            font-size: 1.35em;
+            color: #cccccc;
+            line-height: 1.6;
+        }
+        
+        /* Asymmetric grid - offset content */
+        .content-offset {
+            padding: 100px 0;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .offset-left {
+            padding-left: 25%;
+            padding-right: 10%;
+        }
+        
+        .offset-right {
+            padding-left: 10%;
+            padding-right: 25%;
+        }
+        
+        .content-offset p {
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            color: #e0e0e0;
+            max-width: 700px;
+        }
+        
+        /* Drop cap */
+        .drop-cap::first-letter {
+            font-size: 6em;
+            font-weight: 900;
+            line-height: 0.8;
+            float: left;
+            margin: 10px 20px 0 0;
+            color: var(--brand-color);
+            font-family: 'Bebas Neue', sans-serif;
+        }
+        
+        /* Full bleed image breaking out */
+        .breakout-image {
+            width: 100vw;
+            height: 80vh;
+            object-fit: cover;
+            margin: 0;
+        }
+        
+        /* Overlay text on image */
+        .image-overlay-section {
+            position: relative;
+            height: 70vh;
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            display: flex;
+            align-items: center;
+            padding: 80px;
+        }
+        
+        .image-overlay-section::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(10,10,10,0.75);
+        }
+        
+        .overlay-content {
+            position: relative;
+            z-index: 1;
+            max-width: 900px;
+        }
+        
+        .overlay-content h2 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 5em;
+            color: var(--brand-color);
+            margin-bottom: 30px;
+            letter-spacing: 2px;
+        }
+        
+        /* Massive pull quote */
+        .quote-huge {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 5.5em;
+            line-height: 1;
+            color: #ffffff;
+            padding: 120px 10%;
+            background: var(--brand-color);
+            text-align: center;
+            letter-spacing: 2px;
+        }
+        
+        /* Stats grid - dramatic */
+        .stats-dramatic {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            padding: 80px 10%;
+            gap: 40px;
+        }
+        
+        .stat-box {
+            text-align: center;
+            padding: 50px 30px;
+            background: #161616;
+            border-top: 4px solid var(--brand-color);
+        }
+        
+        .stat-box .number {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 5em;
+            color: var(--brand-color);
+            line-height: 1;
+            margin-bottom: 15px;
+        }
+        
+        .stat-box .label {
+            font-size: 1em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #cccccc;
+        }
+        
+        /* Impact box */
+        .impact-panel {
+            background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+            padding: 60px;
+            margin: 80px 10%;
+            border-left: 8px solid var(--brand-color);
+        }
+        
+        .impact-panel h3 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 3em;
+            color: var(--brand-color);
+            margin-bottom: 25px;
+            letter-spacing: 2px;
+        }
+        
+        .impact-panel p {
+            font-size: 1.2em;
+            line-height: 1.8;
+        }
+        
+        @media (max-width: 768px) {
+            .cover h1 {
+                font-size: 3.5em;
+            }
+            
+            .offset-left,
+            .offset-right {
+                padding-left: 25px;
+                padding-right: 25px;
+            }
+            
+            .stats-dramatic {
+                grid-template-columns: 1fr;
+            }
+            
+            .quote-huge {
+                font-size: 2.8em;
+                padding: 60px 25px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="cover">
+        <div class="cover-content">
+            <div class="tag">Urban Agriculture • 2025</div>
+            <h1>THE SILENT REVOLUTION</h1>
+            <p class="subtitle">How rooftop farming is transforming concrete jungles into sustainable food sources</p>
+        </div>
+    </div>
+
+    <div class="content-offset offset-left">
+        <p class="drop-cap">Sarah Chen stands on the roof of a Brooklyn warehouse, surveying rows of vibrant lettuce, tomatoes, and herbs that stretch across what was once barren tar paper. This is no hobby garden—it's a commercial farm producing 50,000 pounds of produce annually.</p>
+
+        <p>The concept isn't new, but the scale and sophistication are. What began as scattered experiments by urban enthusiasts has evolved into a legitimate agricultural movement, with rooftop farms now operating in over 100 major cities worldwide.</p>
+    </div>
+
+    <img src="placeholder-farmer-harvesting.jpg" alt="Harvesting" class="breakout-image">
+
+    <div class="stats-dramatic">
+        <div class="stat-box">
+            <div class="number">4×</div>
+            <div class="label">Higher Yield</div>
+        </div>
+        <div class="stat-box">
+            <div class="number">30%</div>
+            <div class="label">Energy Savings</div>
+        </div>
+        <div class="stat-box">
+            <div class="number">5,000</div>
+            <div class="label">Jobs Created</div>
+        </div>
+    </div>
+
+    <div class="content-offset offset-right">
+        <p>"We're essentially reclaiming wasted space," Chen explains, pulling a ripe tomato from a vine. "Most urban buildings have flat roofs that do nothing but absorb heat. We're turning them into productive ecosystems."</p>
+
+        <p>These elevated gardens are addressing multiple urban challenges simultaneously: food deserts, stormwater management, urban heat islands, and carbon emissions from food transportation.</p>
+    </div>
+
+    <div class="quote-huge">
+        WE'RE NOT JUST GROWING FOOD. WE'RE GROWING COMMUNITIES.
+    </div>
+
+    <div class="image-overlay-section" style="background-image: url('placeholder-irrigation-system.jpg');">
+        <div class="overlay-content">
+            <h2>TECHNOLOGY DRIVES CHANGE</h2>
+            <p style="font-size: 1.3em; line-height: 1.7;">Modern rooftop farms employ sophisticated irrigation systems that use 90% less water than traditional agriculture. Sensors monitor soil conditions in real-time, adjusting water and nutrients automatically.</p>
+        </div>
+    </div>
+
+    <div class="content-offset offset-left">
+        <p>The numbers tell a compelling story. A single acre of rooftop farming can produce the same yield as four acres of traditional rural farmland, thanks to controlled growing conditions and year-round cultivation.</p>
+        
+        <div class="impact-panel">
+            <h3>ENVIRONMENTAL IMPACT</h3>
+            <p>A typical rooftop farm reduces building energy costs by 30% through natural insulation. It captures thousands of gallons of stormwater annually, reducing strain on overwhelmed urban drainage systems. And by producing food locally, these farms eliminate the emissions associated with transporting produce hundreds or thousands of miles.</p>
+        </div>
+
+        <p>The economic model is proving viable too. While startup costs are significant, farms typically achieve profitability within three to five years. Premium pricing for ultra-fresh, locally-grown produce helps.</p>
+
+        <p>As Chen locks up for the evening, she reflects on the broader implications. "Ten years ago, people thought we were crazy. Now, city planners are calling us. The question isn't whether urban farming will grow—it's how fast."</p>
+    </div>
+</body>
+</html>

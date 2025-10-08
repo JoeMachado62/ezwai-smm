@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 def load_user_env(user_id):
-    load_dotenv(f'.env.user_{user_id}')
+    load_dotenv(f'.env.user_{user_id}', override=True)  # CRITICAL: Override existing env vars
 
 def get_jwt_token(user_id):
     load_user_env(user_id)
@@ -110,9 +110,6 @@ def create_wordpress_post(title, content, user_id, image_url=None):
     if not token:
         return None
 
-    # Remove any existing image tags from the content
-    content = re.sub(r'<img[^>]*>', '', content)
-
     post_data = {
         "title": title,
         "content": content,
@@ -165,6 +162,53 @@ def get_wordpress_posts(user_id, per_page=10, page=1):
             logger.error(f"Response content: {e.response.text}")
         return None
 
+def publish_wordpress_post(post_id, user_id):
+    """
+    Publish a WordPress draft post (change status from draft to publish)
+
+    Args:
+        post_id: WordPress post ID
+        user_id: User ID for authentication
+
+    Returns:
+        dict: Updated post data or None if failed
+    """
+    load_user_env(user_id)
+    base_url = os.getenv("WORDPRESS_REST_API_URL").rstrip('/')
+    if base_url.endswith('/wp-json/wp/v2'):
+        base_url = base_url[:-len('/wp-json/wp/v2')]
+    elif base_url.endswith('/wp-json'):
+        base_url = base_url[:-len('/wp-json')]
+
+    token = get_jwt_token(user_id)
+    if not token:
+        return None
+
+    post_data = {
+        "status": "publish"
+    }
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+
+    try:
+        response = requests.post(
+            f"{base_url}/wp-json/wp/v2/posts/{post_id}",
+            headers=headers,
+            json=post_data
+        )
+        response.raise_for_status()
+        logger.info(f"Successfully published post {post_id}")
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error publishing WordPress post {post_id}: {str(e)}")
+        if hasattr(e, 'response') and e.response:
+            logger.error(f"Response content: {e.response.text}")
+        return None
+
+
 def update_wordpress_post(post_id, title, content, user_id, image_url=None):
     load_user_env(user_id)
     base_url = os.getenv("WORDPRESS_REST_API_URL").rstrip('/')
@@ -187,9 +231,6 @@ def update_wordpress_post(post_id, title, content, user_id, image_url=None):
     token = get_jwt_token(user_id)
     if not token:
         return None
-
-    # Remove any existing image tags from the content
-    content = re.sub(r'<img[^>]*>', '', content)
 
     post_data = {
         "title": title,

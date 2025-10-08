@@ -34,14 +34,15 @@ def create_blog_post(user_id):
                 logger.error(f"User {user_id} not found")
                 return None, "User not found"
 
-            query = query_management(user_id)
+            query, writing_style = query_management(user_id)
             if not query:
                 logger.error(f"No valid query found for user {user_id}")
                 return None, "No valid query found for user"
 
             logger.info(f"[V3 Scheduler] Using query for user {user_id}: {query}")
+            logger.info(f"[V3 Scheduler] Writing style: {writing_style or 'Default'}")
 
-            blog_post_ideas = generate_blog_post_ideas(query, user_id)
+            blog_post_ideas = generate_blog_post_ideas(query, user_id, writing_style)
             if not blog_post_ideas:
                 logger.error(f"No blog post ideas generated for user {user_id}")
                 return None, "No blog post ideas generated"

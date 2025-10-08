@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Silent Revolution in Urban Gardens</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
+
+        :root {
+            --brand-color: #1a1a1a;
+            --accent-color: #666666;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #ffffff;
+            color: #1a1a1a;
+            line-height: 1.9;
+        }
+        
+        /* Single column, centered, max 700px */
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 0 40px;
+        }
+        
+        /* Minimal hero */
+        .hero {
+            min-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 120px 0;
+        }
+        
+        .hero h1 {
+            font-size: 3.5em;
+            font-weight: 300;
+            letter-spacing: -1.5px;
+            line-height: 1.15;
+            margin-bottom: 40px;
+            color: var(--brand-color);
+        }
+        
+        .hero .subtitle {
+            font-size: 1.3em;
+            font-weight: 300;
+            color: var(--accent-color);
+            line-height: 1.7;
+        }
+        
+        .hero .divider {
+            width: 40px;
+            height: 1px;
+            background: var(--brand-color);
+            margin: 50px 0;
+        }
+        
+        /* Large hero image - full width break */
+        .hero-image {
+            width: 100vw;
+            height: 70vh;
+            object-fit: cover;
+            position: relative;
+            left: 50%;
+            right: 50%;
+            margin-left: -50vw;
+            margin-right: -50vw;
+            margin-top: 80px;
+            margin-bottom: 100px;
+        }
+        
+        /* Body text */
+        .content p {
+            font-size: 1.15em;
+            margin-bottom: 32px;
+            color: #2a2a2a;
+            font-weight: 300;
+        }
+        
+        /* Floating stat cards */
+        .stat-float {
+            display: flex;
+            justify-content: space-between;
+            gap: 30px;
+            margin: 80px 0;
+            padding: 50px 0;
+            border-top: 1px solid #e0e0e0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .stat-item {
+            flex: 1;
+            text-align: center;
+        }
+        
+        .stat-item .number {
+            font-size: 3em;
+            font-weight: 300;
+            color: var(--brand-color);
+            line-height: 1;
+            margin-bottom: 15px;
+        }
+        
+        .stat-item .label {
+            font-size: 0.85em;
+            color: var(--accent-color);
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* Pull quote - centered, spacious */
+        .quote {
+            font-size: 2.2em;
+            font-weight: 300;
+            line-height: 1.5;
+            text-align: center;
+            margin: 100px 0;
+            color: var(--brand-color);
+        }
+        
+        /* Section break image - offset */
+        .section-image {
+            width: 85%;
+            height: 450px;
+            object-fit: cover;
+            margin: 80px 0 80px 15%;
+        }
+        
+        /* Minimal highlight box */
+        .highlight {
+            padding: 40px;
+            background: #fafafa;
+            margin: 60px 0;
+            border-left: 2px solid var(--brand-color);
+        }
+        
+        .highlight p {
+            margin-bottom: 0;
+        }
+        
+        /* Spacer */
+        .spacer {
+            height: 100px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 25px;
+            }
+            
+            .hero h1 {
+                font-size: 2.2em;
+            }
+            
+            .hero-image,
+            .section-image {
+                height: 300px;
+                margin-left: 0;
+                width: 100%;
+            }
+            
+            .stat-float {
+                flex-direction: column;
+                gap: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="hero">
+            <h1>The Silent Revolution in Urban Gardens</h1>
+            <div class="divider"></div>
+            <p class="subtitle">How rooftop farming is transforming concrete jungles into sustainable food sources</p>
+        </div>
+    </div>
+    
+    <img src="https://ezwai.com/wp-content/uploads/2025/10/a-cinematic-aerial-view-of-a-modern-city-skyline-a.png" alt="Rooftop garden" class="hero-image">
+    
+    <div class="container">
+        <div class="content">
+            <p>Sarah Chen stands on the roof of a Brooklyn warehouse, surveying rows of vibrant lettuce, tomatoes, and herbs that stretch across what was once barren tar paper. This is no hobby garden—it's a commercial farm producing 50,000 pounds of produce annually, and it represents a quiet revolution happening on rooftops across America's cities.</p>
+
+            <p>The concept isn't new, but the scale and sophistication are. What began as scattered experiments by urban enthusiasts has evolved into a legitimate agricultural movement, with rooftop farms now operating in over 100 major cities worldwide.</p>
+
+            <div class="stat-float">
+                <div class="stat-item">
+                    <div class="number">4×</div>
+                    <div class="label">Higher Yield</div>
+                </div>
+                <div class="stat-item">
+                    <div class="number">30%</div>
+                    <div class="label">Energy Savings</div>
+                </div>
+                <div class="stat-item">
+                    <div class="number">90%</div>
+                    <div class="label">Less Water</div>
+                </div>
+            </div>
+
+            <p>"We're essentially reclaiming wasted space," Chen explains, pulling a ripe tomato from a vine. "Most urban buildings have flat roofs that do nothing but absorb heat. We're turning them into productive ecosystems."</p>
+
+            <p>These elevated gardens are addressing multiple urban challenges simultaneously: food deserts, stormwater management, urban heat islands, and carbon emissions from food transportation.</p>
+
+            <div class="quote">
+                Most urban buildings have flat roofs that do nothing but absorb heat. We're turning them into productive ecosystems.
+            </div>
+
+            <p>The numbers tell a compelling story. A single acre of rooftop farming can produce the same yield as four acres of traditional rural farmland, thanks to controlled growing conditions and year-round cultivation.</p>
+        </div>
+    </div>
+
+    <img src="https://ezwai.com/wp-content/uploads/2025/10/white-font-with-drop-shadow-says-the-urban-agricu.png" alt="Harvesting" class="section-image">
+
+    <div class="container">
+        <div class="content">
+            <p>In New York City alone, rooftop farms now occupy over 30 acres, with that number expected to triple by 2030. But the revolution extends beyond simple food production. Rooftop gardens create jobs—the industry now employs over 5,000 people in full-time positions across the U.S.</p>
+
+            <div class="highlight">
+                <p><strong>Environmental Benefits:</strong> A typical rooftop farm reduces building energy costs by 30% through natural insulation, captures thousands of gallons of stormwater annually, and eliminates transportation emissions by producing food locally.</p>
+            </div>
+
+            <p>Technology has been a crucial enabler. Modern rooftop farms employ sophisticated irrigation systems that use 90% less water than traditional agriculture. Sensors monitor soil conditions in real-time, adjusting water and nutrients automatically.</p>
+
+            <p>The economic model is proving viable too. While startup costs are significant, farms typically achieve profitability within three to five years. Premium pricing for ultra-fresh, locally-grown produce helps, with many farms selling directly to restaurants.</p>
+
+            <p>As Chen locks up for the evening, she reflects on the broader implications. "Ten years ago, people thought we were crazy. Now, city planners are calling us. The question isn't whether urban farming will grow—it's how fast."</p>
+
+            <div class="spacer"></div>
+        </div>
+    </div>
+</body>
+</html>

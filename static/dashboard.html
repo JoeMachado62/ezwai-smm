@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EZWAI SMM - AI Content Dashboard</title>
+    <link rel="icon" type="image/webp" href="/static/ezwai icon portal copy.webp">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -15,9 +16,11 @@
 
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #046675 0%, #023d47 100%);
             min-height: 100vh;
             padding: 20px;
+            margin: 0;
+            position: relative;
         }
 
         .container {
@@ -31,6 +34,18 @@
             padding: 30px 40px;
             margin-bottom: 30px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .header-logo {
+            max-height: 80px;
+            width: auto;
+        }
+
+        .header-text {
+            flex: 1;
         }
 
         .header h1 {
@@ -42,6 +57,17 @@
         .header p {
             color: #666;
             font-size: 1.1em;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .header-logo {
+                max-height: 60px;
+            }
         }
 
         .dashboard-grid {
@@ -105,8 +131,8 @@
         .form-group textarea:focus,
         .form-group select:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #08b0c4;
+            box-shadow: 0 0 0 3px rgba(8, 176, 196, 0.1);
         }
 
         .form-group textarea {
@@ -115,7 +141,7 @@
         }
 
         .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #ff6b11 0%, #e55a00 100%);
             color: white;
             border: none;
             padding: 16px 32px;
@@ -129,7 +155,7 @@
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 10px 25px rgba(255, 107, 17, 0.3);
         }
 
         .btn:active {
@@ -144,13 +170,112 @@
 
         .btn-secondary {
             background: white;
-            color: #667eea;
-            border: 2px solid #667eea;
+            color: #08b0c4;
+            border: 2px solid #08b0c4;
         }
 
         .btn-secondary:hover {
-            background: #667eea;
+            background: #08b0c4;
             color: white;
+        }
+
+        .style-template-btn {
+            background: linear-gradient(135deg, #08b0c4 0%, #06899a 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            margin-left: 15px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .style-template-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(8, 176, 196, 0.3);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: #ffffff;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 700px;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #08b0c4 0%, #06899a 100%);
+            color: white;
+            padding: 25px 30px;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        .template-item {
+            padding: 18px;
+            margin-bottom: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .template-item:hover {
+            border-color: #08b0c4;
+            background-color: #f0f9fb;
+            transform: translateX(5px);
+        }
+
+        .template-name {
+            font-weight: 700;
+            font-size: 16px;
+            color: #08b0c4;
+            margin-bottom: 8px;
+        }
+
+        .template-preview {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .close-modal {
+            color: white;
+            float: right;
+            font-size: 32px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close-modal:hover {
+            opacity: 0.8;
         }
 
         .progress-section {
@@ -176,7 +301,7 @@
 
         .progress-bar {
             height: 100%;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(90deg, #08b0c4 0%, #06899a 100%);
             width: 0%;
             transition: width 0.5s ease;
             border-radius: 10px;
@@ -210,7 +335,7 @@
         .status-info {
             background: #d1ecf1;
             color: #0c5460;
-            border-left: 4px solid #17a2b8;
+            border-left: 4px solid #08b0c4;
         }
 
         .stats-grid {
@@ -221,7 +346,7 @@
         }
 
         .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #08b0c4 0%, #06899a 100%);
             color: white;
             padding: 25px;
             border-radius: 15px;
@@ -255,13 +380,14 @@
             background: transparent;
             cursor: pointer;
             font-weight: 600;
+            font-size: 1.1em;
             color: #666;
             border-radius: 10px;
             transition: all 0.3s ease;
         }
 
         .tab-btn.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #ff6b11 0%, #e55a00 100%);
             color: white;
         }
 
@@ -325,7 +451,7 @@
         }
 
         input:checked + .toggle-slider {
-            background-color: #667eea;
+            background-color: #08b0c4;
         }
 
         input:checked + .toggle-slider:before {
@@ -411,8 +537,11 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚀 EZWAI SMM Dashboard</h1>
-            <p>AI-Powered Content Management for WordPress</p>
+            <img src="/static/EZWai logo  and Tagline.png" alt="EZWAI Logo" class="header-logo">
+            <div class="header-text">
+                <h1>EZWAI SMM Dashboard</h1>
+                <p>AI-Powered Content Management for WordPress</p>
+            </div>
         </div>
 
         <div class="stats-grid">
@@ -453,7 +582,12 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="systemPrompt">Writing Style & Instructions</label>
+                        <label for="systemPrompt">
+                            Writing Style & Instructions
+                            <button type="button" class="style-template-btn" onclick="showStyleTemplates()">
+                                📋 Style Templates
+                            </button>
+                        </label>
                         <textarea
                             id="systemPrompt"
                             placeholder="E.g., 'Write in a professional but conversational tone, targeting small business owners. Include practical examples and actionable tips.'"
@@ -567,6 +701,105 @@
                     </div>
                     <button class="btn" onclick="savePerplexity()">Save</button>
                 </div>
+
+                <div class="card">
+                    <h2><span class="card-icon">🎨</span> Brand Customization</h2>
+                    <p style="color: #666; font-size: 0.9rem; margin-bottom: 16px;">
+                        Customize your article colors or use EZWAi defaults (Teal & Orange)
+                    </p>
+
+                    <div class="form-group">
+                        <label for="brandPrimary">Primary Brand Color (Headers/Borders)</label>
+                        <div style="display: flex; gap: 12px; align-items: stretch;">
+                            <div style="position: relative;">
+                                <input
+                                    type="color"
+                                    id="brandPrimaryPicker"
+                                    value="#08b2c6"
+                                    title="Click to open color picker"
+                                    style="
+                                        width: 80px;
+                                        height: 48px;
+                                        border: 2px solid #ddd;
+                                        border-radius: 8px;
+                                        cursor: pointer;
+                                        padding: 2px;
+                                    "
+                                />
+                                <div style="
+                                    position: absolute;
+                                    bottom: -20px;
+                                    left: 0;
+                                    right: 0;
+                                    text-align: center;
+                                    font-size: 0.75rem;
+                                    color: #666;
+                                ">Pick Color</div>
+                            </div>
+                            <input
+                                type="text"
+                                id="brandPrimary"
+                                value="#08b2c6"
+                                pattern="^#[0-9A-Fa-f]{6}$"
+                                placeholder="#08b2c6"
+                                title="Or type hex color code"
+                                style="flex: 1; font-family: monospace; font-size: 1rem;"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 32px;">
+                        <label for="brandAccent">Accent Color (Buttons/Highlights)</label>
+                        <div style="display: flex; gap: 12px; align-items: stretch;">
+                            <div style="position: relative;">
+                                <input
+                                    type="color"
+                                    id="brandAccentPicker"
+                                    value="#ff6b11"
+                                    title="Click to open color picker"
+                                    style="
+                                        width: 80px;
+                                        height: 48px;
+                                        border: 2px solid #ddd;
+                                        border-radius: 8px;
+                                        cursor: pointer;
+                                        padding: 2px;
+                                    "
+                                />
+                                <div style="
+                                    position: absolute;
+                                    bottom: -20px;
+                                    left: 0;
+                                    right: 0;
+                                    text-align: center;
+                                    font-size: 0.75rem;
+                                    color: #666;
+                                ">Pick Color</div>
+                            </div>
+                            <input
+                                type="text"
+                                id="brandAccent"
+                                value="#ff6b11"
+                                pattern="^#[0-9A-Fa-f]{6}$"
+                                placeholder="#ff6b11"
+                                title="Or type hex color code"
+                                style="flex: 1; font-family: monospace; font-size: 1rem;"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 32px; padding-top: 20px; border-top: 1px solid #eee;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="useDefaultBranding" style="width: 18px; height: 18px; cursor: pointer;">
+                            <span>Reset to EZWAi Default Colors</span>
+                        </label>
+                        <p style="color: #999; font-size: 0.85rem; margin-top: 8px; margin-left: 26px;">
+                            Check this to use the default teal (#08b2c6) and orange (#ff6b11) branding
+                        </p>
+                    </div>
+
+                    <button class="btn" onclick="saveBrandColors()" style="margin-top: 24px; width: 100%;">Save Brand Colors</button>
+                </div>
             </div>
         </div>
     </div>
@@ -654,7 +887,8 @@
                     credentials: 'include',
                     body: JSON.stringify({
                         blog_post_idea: topic,
-                        system_prompt: systemPrompt
+                        system_prompt: systemPrompt,
+                        writing_style: systemPrompt  // Use systemPrompt as writing style for Perplexity
                     })
                 });
 
@@ -710,7 +944,8 @@
                 queryList.innerHTML = '';
 
                 for (let i = 1; i <= 10; i++) {
-                    const queryValue = data[i] || '';
+                    const queryValue = data.queries ? (data.queries[i] || '') : (data[i] || '');
+                    const styleValue = data.styles ? (data.styles[i] || '') : '';
                     queryList.innerHTML += `
                         <div class="query-item">
                             <input
@@ -718,7 +953,19 @@
                                 id="query${i}"
                                 placeholder="Topic ${i}"
                                 value="${queryValue}"
+                                style="flex: 2; margin-right: 10px;"
                             />
+                            <select id="style${i}" style="flex: 1;">
+                                <option value="">Select Writing Style</option>
+                                <option value="Conversational/Personal" ${styleValue === 'Conversational/Personal' ? 'selected' : ''}>Conversational/Personal</option>
+                                <option value="Authoritative/Expert" ${styleValue === 'Authoritative/Expert' ? 'selected' : ''}>Authoritative/Expert</option>
+                                <option value="Narrative/Storytelling" ${styleValue === 'Narrative/Storytelling' ? 'selected' : ''}>Narrative/Storytelling</option>
+                                <option value="Listicle/Scannable" ${styleValue === 'Listicle/Scannable' ? 'selected' : ''}>Listicle/Scannable</option>
+                                <option value="Investigative/Journalistic" ${styleValue === 'Investigative/Journalistic' ? 'selected' : ''}>Investigative/Journalistic</option>
+                                <option value="How-to/Instructional" ${styleValue === 'How-to/Instructional' ? 'selected' : ''}>How-to/Instructional</option>
+                                <option value="Opinion/Commentary" ${styleValue === 'Opinion/Commentary' ? 'selected' : ''}>Opinion/Commentary</option>
+                                <option value="Humorous/Satirical" ${styleValue === 'Humorous/Satirical' ? 'selected' : ''}>Humorous/Satirical</option>
+                            </select>
                         </div>
                     `;
                 }
@@ -730,16 +977,22 @@
 
         function saveQueries() {
             const queries = {};
+            const styles = {};
             for (let i = 1; i <= 10; i++) {
-                const value = document.getElementById(`query${i}`).value;
-                if (value) queries[i] = value;
+                const queryValue = document.getElementById(`query${i}`).value;
+                const styleValue = document.getElementById(`style${i}`).value;
+                if (queryValue) queries[i] = queryValue;
+                if (styleValue) styles[i] = styleValue;
             }
 
             fetch('/api/save_specific_queries', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ specific_topic_queries: queries })
+                body: JSON.stringify({
+                    specific_topic_queries: queries,
+                    writing_styles: styles
+                })
             })
             .then(res => res.json())
             .then(data => {
@@ -813,6 +1066,20 @@
                 if (data.wordpress_password) document.getElementById('wpPassword').value = data.wordpress_password;
                 if (data.perplexity_api_token) document.getElementById('perplexityToken').value = data.perplexity_api_token;
                 if (data.system_prompt) document.getElementById('systemPrompt').value = data.system_prompt;
+
+                // Load brand colors
+                const useDefault = data.use_default_branding !== false;
+                document.getElementById('useDefaultBranding').checked = useDefault;
+
+                const primaryColor = (data.brand_primary_color || '#08b2c6').toUpperCase();
+                const accentColor = (data.brand_accent_color || '#ff6b11').toUpperCase();
+                document.getElementById('brandPrimary').value = primaryColor;
+                document.getElementById('brandPrimaryPicker').value = primaryColor;
+                document.getElementById('brandAccent').value = accentColor;
+                document.getElementById('brandAccentPicker').value = accentColor;
+
+                // Setup color picker event listeners
+                setupColorPickers();
             })
             .catch(err => console.error('Error loading settings:', err));
         }
@@ -859,6 +1126,83 @@
             .catch(err => alert('❌ Error: ' + err.message));
         }
 
+        // Brand customization functions
+        function setupColorPickers() {
+            const primaryPicker = document.getElementById('brandPrimaryPicker');
+            const primaryText = document.getElementById('brandPrimary');
+            const accentPicker = document.getElementById('brandAccentPicker');
+            const accentText = document.getElementById('brandAccent');
+
+            // Sync color picker -> text input
+            primaryPicker.addEventListener('input', function() {
+                primaryText.value = this.value.toUpperCase();
+            });
+
+            accentPicker.addEventListener('input', function() {
+                accentText.value = this.value.toUpperCase();
+            });
+
+            // Sync text input -> color picker
+            primaryText.addEventListener('input', function() {
+                const hexPattern = /^#[0-9A-Fa-f]{6}$/;
+                if (hexPattern.test(this.value)) {
+                    primaryPicker.value = this.value;
+                }
+            });
+
+            accentText.addEventListener('input', function() {
+                const hexPattern = /^#[0-9A-Fa-f]{6}$/;
+                if (hexPattern.test(this.value)) {
+                    accentPicker.value = this.value;
+                }
+            });
+
+            // Handle "Reset to Default" checkbox
+            document.getElementById('useDefaultBranding').addEventListener('change', function() {
+                if (this.checked) {
+                    // Reset to defaults
+                    primaryPicker.value = '#08b2c6';
+                    primaryText.value = '#08b2c6';
+                    accentPicker.value = '#ff6b11';
+                    accentText.value = '#ff6b11';
+                }
+            });
+        }
+
+        function saveBrandColors() {
+            const useDefault = document.getElementById('useDefaultBranding').checked;
+            const primaryColor = document.getElementById('brandPrimary').value.toUpperCase();
+            const accentColor = document.getElementById('brandAccent').value.toUpperCase();
+
+            // Validate hex colors
+            const hexPattern = /^#[0-9A-Fa-f]{6}$/;
+            if (!hexPattern.test(primaryColor) || !hexPattern.test(accentColor)) {
+                alert('❌ Please enter valid hex colors (e.g., #08B2C6)');
+                return;
+            }
+
+            fetch('/api/update_brand_colors', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    use_default_branding: useDefault,
+                    brand_primary_color: primaryColor,
+                    brand_accent_color: accentColor
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert('✅ Brand colors saved! Your custom colors will appear in new articles.');
+                // Update the displayed values
+                document.getElementById('brandPrimary').value = primaryColor;
+                document.getElementById('brandPrimaryPicker').value = primaryColor;
+                document.getElementById('brandAccent').value = accentColor;
+                document.getElementById('brandAccentPicker').value = accentColor;
+            })
+            .catch(err => alert('❌ Error: ' + err.message));
+        }
+
         // Update statistics
         function updateStats() {
             fetch('/api/get_specific_queries', {
@@ -883,10 +1227,117 @@
         }
 
         // Initialize on load
+        // Style Templates Data
+        const styleTemplates = [
+            {
+                name: "Conversational/Personal",
+                prompt: "Write this article in a warm, conversational tone as if you're chatting with a friend over coffee. Use first-person perspective ('I', 'my'), share relatable anecdotes or observations, and keep the language casual and approachable. Include rhetorical questions to engage the reader and don't be afraid to show personality or vulnerability."
+            },
+            {
+                name: "Authoritative/Expert",
+                prompt: "Write this article as an industry expert addressing professionals in the field. Use a confident, credible tone with precise terminology. Support claims with data, statistics, or research citations. Maintain a professional voice throughout, avoid casual language, and structure arguments logically. The goal is to establish authority and trustworthiness."
+            },
+            {
+                name: "Narrative/Storytelling",
+                prompt: "Write this article as a compelling story with a clear beginning, middle, and end. Include vivid descriptions, characters (real or representative), conflict or tension, and resolution. Use sensory details to immerse readers in the experience. Show rather than tell, and create an emotional journey that illustrates your main points through narrative."
+            },
+            {
+                name: "Listicle/Scannable",
+                prompt: "Write this article in a highly scannable format with numbered points or clear sections. Use descriptive subheadings, short paragraphs (2-3 sentences max), and bullet points where appropriate. Front-load key information in each section. Make it easy for readers to skim and extract value quickly. Include a brief intro and conclusion."
+            },
+            {
+                name: "Investigative/Journalistic",
+                prompt: "Write this article as objective journalism with thorough research and fact-checking. Present multiple perspectives, cite credible sources, and maintain neutrality. Use the inverted pyramid structure (most important information first). Include quotes from experts or stakeholders. Stick to verifiable facts and avoid opinion or speculation."
+            },
+            {
+                name: "How-to/Instructional",
+                prompt: "Write this article as a clear, actionable tutorial. Break down the process into numbered steps that are easy to follow. Use imperative verbs ('Click', 'Choose', 'Enter'). Include prerequisites, necessary materials, or tools upfront. Add tips, warnings, or troubleshooting advice where relevant. Focus on helping the reader successfully complete a specific task."
+            },
+            {
+                name: "Opinion/Commentary",
+                prompt: "Write this article as a persuasive opinion piece with a strong, clear point of view. State your thesis early and build a logical argument with supporting evidence. Use passionate but respectful language. Anticipate counterarguments and address them. Include examples that support your perspective. The goal is to convince readers or spark thoughtful debate."
+            },
+            {
+                name: "Humorous/Satirical",
+                prompt: "Write this article with wit and humor, using irony, exaggeration, or absurdist observations. Include clever wordplay, unexpected comparisons, or satirical takes on the subject. Keep the tone light and entertaining while still conveying your message. Use comedic timing with your sentence structure. Make readers laugh while making your point."
+            }
+        ];
+
+        function showStyleTemplates() {
+            const modal = document.getElementById('styleTemplateModal');
+            modal.style.display = 'block';
+        }
+
+        function closeStyleTemplates() {
+            const modal = document.getElementById('styleTemplateModal');
+            modal.style.display = 'none';
+        }
+
+        function selectTemplate(index) {
+            const template = styleTemplates[index];
+            document.getElementById('systemPrompt').value = template.prompt;
+            closeStyleTemplates();
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('styleTemplateModal');
+            if (event.target == modal) {
+                closeStyleTemplates();
+            }
+        }
+
         window.addEventListener('load', () => {
             loadSettings();
             updateStats();
         });
     </script>
+
+    <!-- Style Template Modal -->
+    <div id="styleTemplateModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close-modal" onclick="closeStyleTemplates()">&times;</span>
+                <h2>📋 Choose a Writing Style Template</h2>
+            </div>
+            <div class="modal-body">
+                <div id="templateList">
+                    <div class="template-item" onclick="selectTemplate(0)">
+                        <div class="template-name">Conversational/Personal</div>
+                        <div class="template-preview">Warm, friendly tone with first-person perspective and relatable anecdotes...</div>
+                    </div>
+                    <div class="template-item" onclick="selectTemplate(1)">
+                        <div class="template-name">Authoritative/Expert</div>
+                        <div class="template-preview">Professional, credible tone with data-driven insights and industry expertise...</div>
+                    </div>
+                    <div class="template-item" onclick="selectTemplate(2)">
+                        <div class="template-name">Narrative/Storytelling</div>
+                        <div class="template-preview">Compelling story structure with vivid descriptions and emotional journey...</div>
+                    </div>
+                    <div class="template-item" onclick="selectTemplate(3)">
+                        <div class="template-name">Listicle/Scannable</div>
+                        <div class="template-preview">Highly scannable format with numbered points and short paragraphs...</div>
+                    </div>
+                    <div class="template-item" onclick="selectTemplate(4)">
+                        <div class="template-name">Investigative/Journalistic</div>
+                        <div class="template-preview">Objective journalism with multiple perspectives and credible sources...</div>
+                    </div>
+                    <div class="template-item" onclick="selectTemplate(5)">
+                        <div class="template-name">How-to/Instructional</div>
+                        <div class="template-preview">Clear tutorial with step-by-step instructions and actionable guidance...</div>
+                    </div>
+                    <div class="template-item" onclick="selectTemplate(6)">
+                        <div class="template-name">Opinion/Commentary</div>
+                        <div class="template-preview">Persuasive opinion piece with strong arguments and supporting evidence...</div>
+                    </div>
+                    <div class="template-item" onclick="selectTemplate(7)">
+                        <div class="template-name">Humorous/Satirical</div>
+                        <div class="template-preview">Witty, entertaining style with wordplay and satirical observations...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>

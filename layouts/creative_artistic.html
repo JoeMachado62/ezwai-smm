@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Silent Revolution in Urban Gardens</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Permanent+Marker&family=Patrick+Hand&display=swap');
+
+        :root {
+            --brand-color: #e27456;
+            --accent-color: #ffd700;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Patrick Hand', cursive;
+            background: #fdf8f0;
+            color: #2a2a2a;
+            line-height: 1.8;
+            overflow-x: hidden;
+        }
+        
+        /* Chaotic cover */
+        .cover-chaos {
+            min-height: 100vh;
+            padding: 80px 40px;
+            background: linear-gradient(135deg, var(--brand-color) 0%, #f4a261 100%);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        .cover-chaos::before {
+            content: '';
+            position: absolute;
+            top: -20px;
+            left: -20px;
+            right: -20px;
+            bottom: -20px;
+            border: 10px dashed rgba(255,255,255,0.5);
+            transform: rotate(-3deg);
+        }
+        
+        .cover-badge {
+            position: absolute;
+            top: 100px;
+            right: 120px;
+            background: #fff;
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            border: 6px solid #2a2a2a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-family: 'Permanent Marker', cursive;
+            font-size: 20px;
+            transform: rotate(15deg);
+            box-shadow: 12px 12px 0 rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+        
+        .cover-content-center {
+            position: relative;
+            z-index: 5;
+            text-align: center;
+            max-width: 900px;
+        }
+        
+        .cover-content-center h1 {
+            font-family: 'Permanent Marker', cursive;
+            font-size: 6em;
+            line-height: 0.95;
+            color: #ffffff;
+            text-shadow: 6px 6px 0 rgba(0,0,0,0.3);
+            margin-bottom: 40px;
+            transform: rotate(-3deg);
+            word-spacing: 100vw;
+        }
+        
+        .cover-content-center .subtitle {
+            font-size: 1.7em;
+            color: #ffffff;
+            line-height: 1.6;
+            background: rgba(42,42,42,0.8);
+            padding: 25px 35px;
+            border-radius: 8px;
+            transform: rotate(2deg);
+        }
+        
+        /* Scattered layout container */
+        .scattered-container {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 80px 40px;
+            position: relative;
+        }
+        
+        /* Text boxes scattered */
+        .text-scatter {
+            background: #fff;
+            padding: 40px;
+            margin: 50px 0;
+            border: 6px solid #2a2a2a;
+            box-shadow: 12px 12px 0 rgba(226,116,86,0.4);
+            position: relative;
+            max-width: 700px;
+        }
+        
+        .text-scatter:nth-child(odd) {
+            transform: rotate(-2deg);
+            margin-left: 10%;
+        }
+        
+        .text-scatter:nth-child(even) {
+            transform: rotate(2deg);
+            margin-left: auto;
+            margin-right: 10%;
+        }
+        
+        .text-scatter p {
+            font-size: 1.3em;
+            line-height: 1.8;
+            margin-bottom: 20px;
+        }
+        
+        /* Sticky notes */
+        .sticky {
+            position: absolute;
+            background: var(--accent-color);
+            padding: 20px 30px;
+            font-family: 'Architects Daughter', cursive;
+            font-size: 20px;
+            font-weight: 700;
+            transform: rotate(8deg);
+            box-shadow: 6px 6px 12px rgba(0,0,0,0.3);
+            border: 3px solid #2a2a2a;
+            z-index: 10;
+        }
+        
+        .sticky-1 {
+            top: -30px;
+            right: 50px;
+        }
+        
+        .sticky-2 {
+            top: -35px;
+            left: 40px;
+            transform: rotate(-10deg);
+        }
+        
+        /* Image collage */
+        .collage-section {
+            margin: 100px 0;
+            padding: 60px;
+            background: #fff;
+            border: 8px dashed var(--brand-color);
+            transform: rotate(-1deg);
+        }
+        
+        .collage-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 40px;
+        }
+        
+        .collage-item {
+            border: 6px solid #2a2a2a;
+            background: #fff;
+            padding: 20px;
+            box-shadow: 10px 10px 0 rgba(226,116,86,0.4);
+            transform: rotate(-3deg);
+        }
+        
+        .collage-item:nth-child(2) {
+            transform: rotate(4deg);
+            margin-top: 60px;
+        }
+        
+        .collage-item:nth-child(3) {
+            transform: rotate(2deg);
+            margin-top: -40px;
+        }
+        
+        .collage-item:nth-child(4) {
+            transform: rotate(-4deg);
+        }
+        
+        .collage-item img {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+        }
+        
+        .collage-caption {
+            font-family: 'Architects Daughter', cursive;
+            text-align: center;
+            margin-top: 15px;
+            font-size: 1.2em;
+        }
+        
+        /* Massive quote */
+        .quote-crazy {
+            font-family: 'Permanent Marker', cursive;
+            font-size: 4.5em;
+            line-height: 1.1;
+            color: #2a2a2a;
+            text-align: center;
+            padding: 100px 60px;
+            background: var(--accent-color);
+            border: 10px solid #2a2a2a;
+            box-shadow: 15px 15px 0 rgba(0,0,0,0.2);
+            transform: rotate(-2deg);
+            margin: 100px 40px;
+            text-transform: uppercase;
+        }
+        
+        /* Stats fun */
+        .stats-fun {
+            display: flex;
+            justify-content: space-around;
+            gap: 40px;
+            padding: 80px 40px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-fun {
+            background: #f0f8ff;
+            border: 5px solid #2a2a2a;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 8px 8px 0 rgba(226,116,86,0.4);
+            min-width: 250px;
+        }
+        
+        .stat-fun:nth-child(1) {
+            transform: rotate(-4deg);
+        }
+        
+        .stat-fun:nth-child(2) {
+            transform: rotate(3deg);
+        }
+        
+        .stat-fun:nth-child(3) {
+            transform: rotate(-2deg);
+        }
+        
+        .stat-fun .number {
+            font-family: 'Permanent Marker', cursive;
+            font-size: 5em;
+            color: var(--brand-color);
+            line-height: 1;
+            margin-bottom: 15px;
+        }
+        
+        .stat-fun .label {
+            font-size: 1.2em;
+            color: #2a2a2a;
+            font-weight: 700;
+        }
+        
+        /* Scribble dividers */
+        .scribble {
+            text-align: center;
+            font-size: 3em;
+            color: var(--brand-color);
+            margin: 70px 0;
+            font-family: 'Permanent Marker', cursive;
+        }
+        
+        @media (max-width: 768px) {
+            .cover-content-center h1 {
+                font-size: 3.5em;
+            }
+            
+            .cover-badge {
+                width: 120px;
+                height: 120px;
+                font-size: 14px;
+                top: 60px;
+                right: 40px;
+            }
+            
+            .text-scatter:nth-child(odd),
+            .text-scatter:nth-child(even) {
+                margin-left: 0;
+                margin-right: 0;
+            }
+            
+            .collage-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-fun {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="cover-chaos" style="background-image: url('https://ezwai.com/wp-content/uploads/2025/10/a-cinematic-aerial-view-of-a-modern-city-skyline-a-1.jpg'); background-size: cover; background-position: center;">
+        <div class="cover-badge">
+            ★ 2025<br>SPECIAL<br>ISSUE ★
+        </div>
+        <div class="cover-content-center">
+            <h1>THE SILENT REVOLUTION</h1>
+            <p class="subtitle">How rooftop farming is transforming concrete jungles into sustainable food sources</p>
+        </div>
+    </div>
+
+    <div class="stats-fun">
+        <div class="stat-fun">
+            <div class="number">4×</div>
+            <div class="label">HIGHER YIELD!</div>
+        </div>
+        <div class="stat-fun">
+            <div class="number">90%</div>
+            <div class="label">LESS WATER!</div>
+        </div>
+        <div class="stat-fun">
+            <div class="number">100+</div>
+            <div class="label">CITIES!</div>
+        </div>
+    </div>
+
+    <div class="scattered-container">
+        <div class="text-scatter">
+            <div class="sticky sticky-1">50K lbs!</div>
+            <p>Sarah Chen stands on the roof of a Brooklyn warehouse, surveying rows of vibrant lettuce, tomatoes, and herbs that stretch across what was once barren tar paper. This is no hobby garden—it's a commercial farm producing 50,000 pounds of produce annually!</p>
+        </div>
+
+        <div class="text-scatter">
+            <div class="sticky sticky-2">Amazing!</div>
+            <p>The concept isn't new, but the scale and sophistication are. What began as scattered experiments by urban enthusiasts has evolved into a legitimate agricultural movement, with rooftop farms now operating in over 100 major cities worldwide.</p>
+        </div>
+
+        <div class="text-scatter">
+            <p>"We're essentially reclaiming wasted space," Chen explains, pulling a ripe tomato from a vine. "Most urban buildings have flat roofs that do nothing but absorb heat. We're turning them into productive ecosystems that feed our communities!"</p>
+        </div>
+    </div>
+
+    <div class="collage-section">
+        <div class="collage-grid">
+            <div class="collage-item">
+                <img src="placeholder-rooftop-garden-aerial.jpg" alt="Rooftop view">
+                <div class="collage-caption">Sky-high gardens!</div>
+            </div>
+            <div class="collage-item">
+                <img src="placeholder-farmer-harvesting.jpg" alt="Harvesting">
+                <div class="collage-caption">Fresh daily!</div>
+            </div>
+            <div class="collage-item">
+                <img src="placeholder-irrigation-system.jpg" alt="Tech systems">
+                <div class="collage-caption">Smart tech = 90% less water!</div>
+            </div>
+            <div class="collage-item">
+                <img src="placeholder-city-sunset.jpg" alt="City sunset">
+                <div class="collage-caption">Future of cities!</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="quote-crazy">
+        WE'RE NOT JUST GROWING FOOD—WE'RE GROWING COMMUNITIES!
+    </div>
+
+    <div class="scattered-container">
+        <div class="text-scatter">
+            <p>The numbers tell a compelling story. A single acre of rooftop farming can produce the same yield as four acres of traditional rural farmland, thanks to controlled growing conditions and year-round cultivation!</p>
+        </div>
+
+        <div class="scribble">★ ★ ★</div>
+
+        <div class="text-scatter">
+            <p>Modern rooftop farms employ sophisticated irrigation systems that use 90% less water than traditional agriculture. Sensors monitor soil conditions in real-time, adjusting water and nutrients automatically. Some farms even use aquaponics systems!</p>
+        </div>
+
+        <div class="text-scatter">
+            <div class="sticky sticky-1">Fast ROI!</div>
+            <p>The economic model is proving viable too. While startup costs are significant, farms typically achieve profitability within three to five years. Premium pricing for ultra-fresh, locally-grown produce helps!</p>
+        </div>
+
+        <div class="scribble">→ HOW FAST? →</div>
+
+        <div class="text-scatter">
+            <p>As Chen locks up for the evening, she reflects: "Ten years ago, people thought we were crazy. Now, city planners are calling us. The question isn't whether urban farming will grow—it's HOW FAST!"</p>
+        </div>
+    </div>
+</body>
+</html>

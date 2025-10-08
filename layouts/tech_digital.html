@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Silent Revolution in Urban Gardens</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap');
+
+        :root {
+            --brand-color: #1f6feb;
+            --accent-color: #58a6ff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            line-height: 1.7;
+        }
+        
+        /* Split screen hero */
+        .hero-split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 100vh;
+        }
+        
+        .hero-content {
+            padding: 80px 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background: #0d1117;
+        }
+        
+        .hero-image-side {
+            background: url('placeholder-rooftop-garden-aerial.jpg') center/cover;
+            position: relative;
+        }
+        
+        .hero-image-side::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to right, #0d1117 0%, transparent 100%);
+        }
+        
+        .tag {
+            display: inline-block;
+            background: var(--brand-color);
+            color: #ffffff;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 30px;
+        }
+        
+        .hero-content h1 {
+            font-size: 4.5em;
+            font-weight: 700;
+            line-height: 1.1;
+            color: #ffffff;
+            margin-bottom: 30px;
+        }
+        
+        .hero-content .subtitle {
+            font-size: 1.3em;
+            color: var(--accent-color);
+            line-height: 1.6;
+            margin-bottom: 40px;
+        }
+        
+        .meta-badges {
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+        }
+        
+        .badge {
+            background: #161b22;
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+        }
+        
+        /* Card grid layout */
+        .card-grid {
+            padding: 80px 60px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 35px;
+            transition: transform 0.2s;
+        }
+        
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: var(--brand-color);
+        }
+        
+        .card h3 {
+            font-size: 1.6em;
+            color: var(--accent-color);
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+        
+        .card p {
+            font-size: 1.05em;
+            line-height: 1.7;
+            color: #c9d1d9;
+        }
+        
+        /* Data visualization section */
+        .data-section {
+            padding: 80px 60px;
+            background: #010409;
+        }
+        
+        .data-section h2 {
+            font-size: 3em;
+            font-weight: 700;
+            color: #ffffff;
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #1f6feb15 0%, #0969da15 100%);
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .metric-card .number {
+            font-size: 4.5em;
+            font-weight: 700;
+            color: var(--accent-color);
+            line-height: 1;
+            margin-bottom: 15px;
+        }
+        
+        .metric-card .label {
+            font-size: 1em;
+            color: #8b949e;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* Full width image break */
+        .image-break {
+            width: 100%;
+            height: 500px;
+            object-fit: cover;
+            margin: 60px 0;
+        }
+        
+        /* Quote card */
+        .quote-card {
+            background: linear-gradient(135deg, var(--brand-color) 0%, #0969da 100%);
+            padding: 80px 60px;
+            margin: 80px 0;
+            text-align: center;
+        }
+        
+        .quote-card blockquote {
+            font-size: 2.5em;
+            font-weight: 600;
+            line-height: 1.4;
+            color: #ffffff;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        /* Feature grid */
+        .feature-grid {
+            padding: 80px 60px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .feature-item {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            margin-bottom: 80px;
+            align-items: center;
+        }
+        
+        .feature-item:nth-child(even) {
+            direction: rtl;
+        }
+        
+        .feature-item:nth-child(even) > * {
+            direction: ltr;
+        }
+        
+        .feature-image {
+            width: 100%;
+            height: 350px;
+            object-fit: cover;
+            border-radius: 12px;
+            border: 1px solid #30363d;
+        }
+        
+        .feature-text h3 {
+            font-size: 2em;
+            color: var(--accent-color);
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+        
+        .feature-text p {
+            font-size: 1.1em;
+            line-height: 1.8;
+        }
+        
+        @media (max-width: 768px) {
+            .hero-split {
+                grid-template-columns: 1fr;
+            }
+            
+            .hero-image-side {
+                height: 300px;
+            }
+            
+            .hero-content h1 {
+                font-size: 2.8em;
+            }
+            
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .feature-item {
+                grid-template-columns: 1fr;
+            }
+            
+            .feature-item:nth-child(even) {
+                direction: ltr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="hero-split">
+        <div class="hero-content">
+            <div class="tag">Tech & Innovation</div>
+            <h1>The Silent Revolution in Urban Gardens</h1>
+            <p class="subtitle">How rooftop farming is transforming concrete jungles into sustainable food sources through data-driven agriculture</p>
+            <div class="meta-badges">
+                <div class="badge">📅 Oct 7, 2025</div>
+                <div class="badge">⏱ 8 min read</div>
+                <div class="badge">🌱 Agriculture</div>
+            </div>
+        </div>
+        <div class="hero-image-side" style="background-image: url('https://ezwai.com/wp-content/uploads/2025/10/a-cinematic-aerial-view-of-a-modern-city-skyline-a-1.jpg');"></div>
+    </div>
+
+    <div class="data-section">
+        <h2>Impact Metrics</h2>
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="number">4×</div>
+                <div class="label">Yield Multiplier</div>
+            </div>
+            <div class="metric-card">
+                <div class="number">90%</div>
+                <div class="label">Water Reduction</div>
+            </div>
+            <div class="metric-card">
+                <div class="number">30%</div>
+                <div class="label">Energy Savings</div>
+            </div>
+            <div class="metric-card">
+                <div class="number">5K+</div>
+                <div class="label">Jobs Created</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-grid">
+        <div class="card">
+            <h3>The Movement</h3>
+            <p>Sarah Chen stands on the roof of a Brooklyn warehouse, surveying rows of vibrant lettuce, tomatoes, and herbs that stretch across what was once barren tar paper. This is no hobby garden—it's a commercial farm producing 50,000 pounds of produce annually.</p>
+        </div>
+        
+        <div class="card">
+            <h3>Scale & Sophistication</h3>
+            <p>What began as scattered experiments by urban enthusiasts has evolved into a legitimate agricultural movement, with rooftop farms now operating in over 100 major cities worldwide.</p>
+        </div>
+        
+        <div class="card">
+            <h3>Reclaiming Space</h3>
+            <p>"We're essentially reclaiming wasted space," Chen explains. "Most urban buildings have flat roofs that do nothing but absorb heat. We're turning them into productive ecosystems powered by real-time data."</p>
+        </div>
+    </div>
+
+    <img src="placeholder-farmer-harvesting.jpg" alt="Urban farming" class="image-break">
+
+    <div class="feature-grid">
+        <div class="feature-item">
+            <div class="feature-text">
+                <h3>Smart Technology</h3>
+                <p>Modern rooftop farms employ sophisticated irrigation systems that use 90% less water than traditional agriculture. Sensors monitor soil conditions in real-time, adjusting water and nutrients automatically. Some farms even use aquaponics systems, integrating fish farming with vegetable production.</p>
+            </div>
+            <img src="placeholder-irrigation-system.jpg" alt="Smart irrigation" class="feature-image">
+        </div>
+
+        <div class="feature-item">
+            <div class="feature-text">
+                <h3>Environmental Benefits</h3>
+                <p>A typical rooftop farm reduces building energy costs by 30% through natural insulation. It captures thousands of gallons of stormwater annually, reducing strain on urban drainage systems. And by producing food locally, these farms eliminate transportation emissions.</p>
+            </div>
+            <img src="placeholder-city-sunset.jpg" alt="Urban sustainability" class="feature-image">
+        </div>
+    </div>
+
+    <div class="quote-card">
+        <blockquote>
+            We're not just growing food. We're building intelligent urban ecosystems.
+        </blockquote>
+    </div>
+
+    <div class="card-grid">
+        <div class="card">
+            <h3>Economic Model</h3>
+            <p>While startup costs are significant—converting a rooftop can cost $200,000 to $1 million—farms typically achieve profitability within three to five years. Premium pricing for ultra-fresh produce helps.</p>
+        </div>
+        
+        <div class="card">
+            <h3>Industry Growth</h3>
+            <p>The numbers tell a compelling story. In New York City alone, rooftop farms now occupy over 30 acres, with that number expected to triple by 2030. The industry employs over 5,000 people in full-time positions.</p>
+        </div>
+        
+        <div class="card">
+            <h3>Future Outlook</h3>
+            <p>"Ten years ago, people thought we were crazy," Chen says. "Now, city planners are calling us. The question isn't whether urban farming will grow—it's how fast."</p>
+        </div>
+    </div>
+</body>
+</html>

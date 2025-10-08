@@ -51,7 +51,7 @@ if not exist ".env" (
 echo .env file found
 echo.
 
-REM Check MySQL service (Windows)
+REM Check MySQL service (Windows) - Optional for XAMPP/WAMP users
 echo [4/6] Checking MySQL service...
 sc query MySQL >nul 2>&1
 if errorlevel 1 (
@@ -59,11 +59,10 @@ if errorlevel 1 (
     echo Checking for MySQL80 service...
     sc query MySQL80 >nul 2>&1
     if errorlevel 1 (
-        echo ERROR: No MySQL service found
-        echo Please ensure MySQL is installed and the service name is correct
-        echo Common service names: MySQL, MySQL80, MySQL57
-        pause
-        exit /b 1
+        echo NOTE: No MySQL Windows service found
+        echo This is normal if using XAMPP/WAMP
+        echo Database connection will be tested in next step...
+        goto :skip_mysql_service
     ) else (
         set MYSQL_SERVICE=MySQL80
     )
@@ -71,21 +70,23 @@ if errorlevel 1 (
     set MYSQL_SERVICE=MySQL
 )
 
-REM Check if MySQL is running
+REM Check if MySQL is running (only if service was found)
 sc query %MYSQL_SERVICE% | find "RUNNING" >nul
 if errorlevel 1 (
     echo MySQL service found but not running. Starting...
     net start %MYSQL_SERVICE%
     if errorlevel 1 (
-        echo ERROR: Failed to start MySQL service
+        echo WARNING: Failed to start MySQL service
         echo Please start MySQL manually or run this script as Administrator
-        pause
-        exit /b 1
+        echo Database connection will be tested in next step...
+        goto :skip_mysql_service
     )
     echo MySQL started successfully
 ) else (
-    echo MySQL is running
+    echo MySQL service is running
 )
+
+:skip_mysql_service
 echo.
 
 REM Check database connection
