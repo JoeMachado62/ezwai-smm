@@ -1,12 +1,25 @@
 """
+⚠️ DEPRECATED: This file is superseded by openai_integration_v4.py
+
 openai_integration_v3.py — Stable Cross-SDK, Pylance-Clean (Drop-in)
 
+DEPRECATION NOTICE:
+- This V3 file is kept for reference only
+- Please use openai_integration_v4.py for all new development
+- V4 provides identical features with cleaner, more maintainable code structure
+- V3 will be archived after full migration to V4 is complete
+
+ORIGINAL DESCRIPTION:
 - Pass 1 (story): GPT-5 (full) by default. Responses API does not support temperature.
 - Pass 2 (summary/outline) & Pass 3A (image prompts): prefer Structured Outputs (json_schema).
   If the SDK/endpoint rejects response_format, automatically fall back to prompted-JSON with repair.
 - No tools/function-calling used for JSON steps.
 - Replicate SeeDream-4 for images; persist images to WordPress; embed WP source_url in final HTML.
 - Rotating file logs and forensic dumps for JSON parse issues.
+
+MIGRATION PATH:
+Replace: from openai_integration_v3 import create_blog_post_with_images_v3
+With:    from openai_integration_v4 import create_blog_post_with_images_v4
 """
 
 from __future__ import annotations

@@ -1,6 +1,6 @@
 """
 EZWAI SMM V3.0 Scheduler
-Updated to use V3 integrations with GPT-5-mini + SeeDream-4
+Updated to use V4 modular integrations with GPT-5-mini + SeeDream-4
 """
 import os
 import json
@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from sqlalchemy.exc import SQLAlchemyError
 from app_v3 import app, db, User, CompletedJob  # V3 imports
 from perplexity_ai_integration import query_management, generate_blog_post_ideas
-from openai_integration_v3 import create_blog_post_with_images_v3  # V3 integration
+from openai_integration_v4 import create_blog_post_with_images_v4  # V4 modular refactor (feature parity with V3)
 from wordpress_integration import create_wordpress_post
 from email_notification import send_email_notification
 
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 def create_blog_post(user_id):
     """
-    V3 blog post creation for scheduled jobs
+    V4 blog post creation for scheduled jobs
     Uses GPT-5-mini reasoning + SeeDream-4 2K images
     """
     with app.app_context():
@@ -53,10 +53,10 @@ def create_blog_post(user_id):
             logger.info(f"[V3 Scheduler] Creating magazine-style blog post with GPT-5-mini reasoning...")
             logger.info(f"Idea: {blog_post_idea[:100]}...")
 
-            # Use V3 function with GPT-5-mini + SeeDream-4
-            processed_post, error = create_blog_post_with_images_v3(blog_post_idea, user_id, system_prompt)
+            # Use V4 function with GPT-5-mini + SeeDream-4
+            processed_post, error = create_blog_post_with_images_v4(blog_post_idea, user_id, system_prompt)
             if error:
-                logger.error(f"Error in create_blog_post_with_images_v3 for user {user_id}: {error}")
+                logger.error(f"Error in create_blog_post_with_images_v4 for user {user_id}: {error}")
                 return None, error
 
             title = processed_post['title']
@@ -198,7 +198,7 @@ def check_and_trigger_jobs():
 if __name__ == "__main__":
     try:
         logger.info("[V3 Scheduler] Starting EZWAI SMM V3.0 Scheduler")
-        logger.info("[V3 Scheduler] Using GPT-5-mini + SeeDream-4")
+        logger.info("[V3 Scheduler] Using V4 pipeline: GPT-5-mini + SeeDream-4")
         check_and_trigger_jobs()
         logger.info("[V3 Scheduler] Scheduler run completed")
     except Exception as e:

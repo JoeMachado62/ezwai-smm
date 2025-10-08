@@ -21,7 +21,8 @@ import replicate
 # Import V4 modular components
 from story_generation import generate_clean_article
 from image_prompt_generator import generate_contextual_image_prompts
-from magazine_formatter import apply_magazine_styling
+from claude_formatter import format_article_with_claude
+from magazine_formatter import apply_magazine_styling  # Fallback formatter
 
 # Import shared utilities
 from wordpress_integration import load_user_env as wp_load_user_env, download_image, get_jwt_token
@@ -408,18 +409,37 @@ def create_blog_post_with_images_v4(
         except Exception as e:
             logger.warning(f"[STEP 4] Could not load brand colors, using defaults: {e}")
 
-        final_html = apply_magazine_styling(
-            article_data=article_data,  # Now passes full structured data
+        # Try Claude AI formatter first (intelligent layout decisions)
+        logger.info("[STEP 4] Attempting Claude AI-powered formatting...")
+        section_image_urls_only = [img['url'] for img in section_image_mappings if img.get('url')]
+
+        final_html = format_article_with_claude(
+            article_html=article_data['html'],
+            title=title,
             hero_image_url=hero_image_url,
-            section_images=section_image_mappings,
+            section_images=section_image_urls_only,
             user_id=user_id,
-            brand_colors=brand_colors
+            brand_colors=brand_colors,
+            layout_style="premium_magazine"
         )
 
+        # Fallback to template formatter if Claude fails
         if not final_html:
-            return None, "Magazine formatting failed"
+            logger.warning("[STEP 4] Claude formatter failed, using template fallback")
+            final_html = apply_magazine_styling(
+                article_data=article_data,
+                hero_image_url=hero_image_url,
+                section_images=section_image_mappings,
+                user_id=user_id,
+                brand_colors=brand_colors
+            )
 
-        logger.info(f"[STEP 4] ✅ Layout assembled - {len(final_html)} characters")
+            if not final_html:
+                return None, "Both Claude and template formatting failed"
+
+            logger.info(f"[STEP 4] ✅ Template layout assembled - {len(final_html)} characters")
+        else:
+            logger.info(f"[STEP 4] ✅ Claude AI layout assembled - {len(final_html)} characters")
 
         # SAVE POINT #2: Save formatted article with styling
         _save_formatted_article(final_html, title, user_id, hero_image_url, section_image_urls)
