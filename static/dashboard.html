@@ -340,9 +340,15 @@
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 20px;
             margin-bottom: 25px;
+        }
+
+        @media (max-width: 1200px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
 
         .stat-card {
@@ -351,6 +357,17 @@
             padding: 25px;
             border-radius: 15px;
             text-align: center;
+        }
+
+        .stat-card.credits {
+            background: linear-gradient(135deg, #ff6b11 0%, #e55a00 100%);
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .stat-card.credits:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(255, 107, 17, 0.3);
         }
 
         .stat-number {
@@ -362,6 +379,13 @@
         .stat-label {
             font-size: 0.9em;
             opacity: 0.9;
+        }
+
+        .credit-action {
+            font-size: 0.75em;
+            opacity: 0.9;
+            margin-top: 8px;
+            font-weight: 600;
         }
 
         .tab-navigation {
@@ -545,6 +569,11 @@
         </div>
 
         <div class="stats-grid">
+            <div class="stat-card credits" onclick="switchTab('billing')" title="Click to manage credits">
+                <div class="stat-number">$<span id="creditBalance">0.00</span></div>
+                <div class="stat-label">Credit Balance</div>
+                <div class="credit-action">💳 Click to Buy Credits</div>
+            </div>
             <div class="stat-card">
                 <div class="stat-number" id="totalPosts">0</div>
                 <div class="stat-label">Total Posts</div>
@@ -563,6 +592,7 @@
             <button class="tab-btn active" onclick="switchTab('create')">✨ Create Post</button>
             <button class="tab-btn" onclick="switchTab('queries')">📝 Topics</button>
             <button class="tab-btn" onclick="switchTab('schedule')">📅 Schedule</button>
+            <button class="tab-btn" onclick="switchTab('billing')">💳 Credits & Billing</button>
             <button class="tab-btn" onclick="switchTab('settings')">⚙️ Settings</button>
         </div>
 
@@ -646,22 +676,101 @@
             </div>
         </div>
 
+        <!-- Billing Tab -->
+        <div id="billingTab" class="tab-content">
+            <div class="dashboard-grid">
+                <div class="card">
+                    <h2><span class="card-icon">💰</span> Buy Credits</h2>
+                    <p style="color: #666; margin-bottom: 25px;">
+                        Credits are used to generate blog posts. Each article costs approximately $0.45.
+                    </p>
+
+                    <div class="form-group">
+                        <label>Select Credit Package</label>
+                        <select id="creditPackage" style="font-size: 1.1em; padding: 16px;">
+                            <option value="10">$10.00 - Starter (~22 articles)</option>
+                            <option value="25" selected>$25.00 - Basic (~55 articles)</option>
+                            <option value="50">$50.00 - Pro (~111 articles)</option>
+                            <option value="100">$100.00 - Premium (~222 articles)</option>
+                            <option value="250">$250.00 - Enterprise (~555 articles)</option>
+                        </select>
+                    </div>
+
+                    <button class="btn" onclick="purchaseCredits()">
+                        🛒 Purchase Credits
+                    </button>
+
+                    <div style="margin-top: 30px; padding: 20px; background: #f8f9ff; border-radius: 12px;">
+                        <h3 style="font-size: 1.2em; margin-bottom: 15px;">💳 Current Balance</h3>
+                        <p style="font-size: 2em; font-weight: 700; color: #ff6b11; margin: 10px 0;">
+                            $<span id="currentBalance">0.00</span>
+                        </p>
+                        <p style="color: #666; font-size: 0.9em;">
+                            Estimated articles remaining: <strong id="estimatedArticles">0</strong>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2><span class="card-icon">🔄</span> Auto-Recharge Settings</h2>
+                    <p style="color: #666; margin-bottom: 25px;">
+                        Automatically purchase credits when your balance runs low.
+                    </p>
+
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 12px;">
+                            <input type="checkbox" id="autoRechargeEnabled" style="width: 24px; height: 24px; cursor: pointer;">
+                            <span style="font-weight: 600;">Enable Auto-Recharge</span>
+                        </label>
+                    </div>
+
+                    <div id="autoRechargeSettings" style="display: none; margin-top: 20px;">
+                        <div class="form-group">
+                            <label>Recharge When Balance Falls Below</label>
+                            <select id="autoRechargeThreshold" style="font-size: 1.05em;">
+                                <option value="5">$5.00</option>
+                                <option value="10" selected>$10.00</option>
+                                <option value="25">$25.00</option>
+                                <option value="50">$50.00</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Recharge Amount</label>
+                            <select id="autoRechargeAmount" style="font-size: 1.05em;">
+                                <option value="25" selected>$25.00</option>
+                                <option value="50">$50.00</option>
+                                <option value="100">$100.00</option>
+                                <option value="250">$250.00</option>
+                            </select>
+                        </div>
+
+                        <div style="padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 8px; margin-bottom: 20px;">
+                            <p style="color: #856404; font-size: 0.9em; margin: 0;">
+                                ⚠️ You'll be charged automatically when your balance drops below the threshold.
+                            </p>
+                        </div>
+                    </div>
+
+                    <button class="btn" onclick="saveAutoRecharge()">
+                        💾 Save Auto-Recharge Settings
+                    </button>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 30px;">
+                <h2><span class="card-icon">📊</span> Transaction History</h2>
+                <div id="transactionHistory" style="max-height: 400px; overflow-y: auto;">
+                    <p style="color: #999; text-align: center; padding: 40px;">
+                        Loading transactions...
+                    </p>
+                </div>
+            </div>
+        </div>
+
         <!-- Settings Tab -->
         <div id="settingsTab" class="tab-content">
             <div class="dashboard-grid">
-                <div class="card">
-                    <h2><span class="card-icon">🔑</span> OpenAI Settings</h2>
-                    <div class="form-group">
-                        <label for="openaiKey">API Key</label>
-                        <input
-                            type="password"
-                            id="openaiKey"
-                            placeholder="sk-..."
-                        />
-                    </div>
-                    <button class="btn" onclick="saveOpenAI()">Save</button>
-                </div>
-
                 <div class="card">
                     <h2><span class="card-icon">🌐</span> WordPress Settings</h2>
                     <div class="form-group">
@@ -687,19 +796,6 @@
                         />
                     </div>
                     <button class="btn" onclick="saveWordPress()">Save</button>
-                </div>
-
-                <div class="card">
-                    <h2><span class="card-icon">🤖</span> Perplexity AI</h2>
-                    <div class="form-group">
-                        <label for="perplexityToken">API Token</label>
-                        <input
-                            type="password"
-                            id="perplexityToken"
-                            placeholder="pplx-..."
-                        />
-                    </div>
-                    <button class="btn" onclick="savePerplexity()">Save</button>
                 </div>
 
                 <div class="card">
@@ -835,6 +931,7 @@
             // Load data for specific tabs
             if (tabName === 'queries') loadQueries();
             if (tabName === 'schedule') loadSchedule();
+            if (tabName === 'billing') loadBilling();
             if (tabName === 'settings') loadSettings();
         }
 
@@ -1053,6 +1150,145 @@
             .catch(err => alert('❌ Error saving schedule: ' + err.message));
         }
 
+        // Billing functions
+        function loadBilling() {
+            loadCredits();
+            loadTransactions();
+            loadAutoRecharge();
+        }
+
+        function loadCredits() {
+            fetch('/api/profile', {
+                credentials: 'include'
+            })
+            .then(res => res.json())
+            .then(data => {
+                const balance = (data.credit_balance || 0).toFixed(2);
+                const estimated = Math.floor(data.credit_balance / 0.45);
+
+                document.getElementById('creditBalance').textContent = balance;
+                document.getElementById('currentBalance').textContent = balance;
+                document.getElementById('estimatedArticles').textContent = estimated;
+            })
+            .catch(err => console.error('Error loading credits:', err));
+        }
+
+        function loadTransactions() {
+            fetch('/api/profile', {
+                credentials: 'include'
+            })
+            .then(res => res.json())
+            .then(data => {
+                const userId = data.id;
+                return fetch(`/api/users/${userId}/transactions`, {
+                    credentials: 'include'
+                });
+            })
+            .then(res => res.json())
+            .then(data => {
+                const history = document.getElementById('transactionHistory');
+                if (!data.transactions || data.transactions.length === 0) {
+                    history.innerHTML = '<p style="color: #999; text-align: center; padding: 40px;">No transactions yet</p>';
+                    return;
+                }
+
+                let html = '<table style="width: 100%; border-collapse: collapse;">';
+                html += '<tr style="background: #f8f9ff; font-weight: 600;"><th style="padding: 12px; text-align: left;">Date</th><th style="padding: 12px; text-align: left;">Type</th><th style="padding: 12px; text-align: right;">Amount</th></tr>';
+
+                data.transactions.forEach(t => {
+                    const date = new Date(t.created_at).toLocaleDateString();
+                    const type = t.transaction_type === 'purchase' ? '💳 Purchase' : '📝 Article';
+                    const amountClass = t.transaction_type === 'purchase' ? 'color: #28a745' : 'color: #dc3545';
+                    const amount = t.transaction_type === 'purchase' ? `+$${t.amount.toFixed(2)}` : `-$${Math.abs(t.amount).toFixed(2)}`;
+
+                    html += `<tr style="border-bottom: 1px solid #eee;"><td style="padding: 12px;">${date}</td><td style="padding: 12px;">${type}</td><td style="padding: 12px; text-align: right; ${amountClass}; font-weight: 600;">${amount}</td></tr>`;
+                });
+
+                html += '</table>';
+                history.innerHTML = html;
+            })
+            .catch(err => {
+                document.getElementById('transactionHistory').innerHTML = '<p style="color: #dc3545; text-align: center; padding: 40px;">Error loading transactions</p>';
+            });
+        }
+
+        function loadAutoRecharge() {
+            fetch('/api/profile', {
+                credentials: 'include'
+            })
+            .then(res => res.json())
+            .then(data => {
+                const enabled = data.auto_recharge_enabled || false;
+                document.getElementById('autoRechargeEnabled').checked = enabled;
+                document.getElementById('autoRechargeSettings').style.display = enabled ? 'block' : 'none';
+
+                if (data.auto_recharge_threshold) {
+                    document.getElementById('autoRechargeThreshold').value = data.auto_recharge_threshold;
+                }
+                if (data.auto_recharge_amount) {
+                    document.getElementById('autoRechargeAmount').value = data.auto_recharge_amount;
+                }
+            })
+            .catch(err => console.error('Error loading auto-recharge:', err));
+
+            // Add event listener for checkbox
+            document.getElementById('autoRechargeEnabled').addEventListener('change', function() {
+                document.getElementById('autoRechargeSettings').style.display = this.checked ? 'block' : 'none';
+            });
+        }
+
+        async function purchaseCredits() {
+            const amount = parseFloat(document.getElementById('creditPackage').value);
+
+            try {
+                const res = await fetch('/api/credits/purchase', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ amount })
+                });
+
+                const data = await res.json();
+
+                if (data.checkout_url) {
+                    // Redirect to Stripe checkout
+                    window.location.href = data.checkout_url;
+                } else {
+                    alert('❌ Error creating checkout session');
+                }
+            } catch (err) {
+                alert('❌ Error: ' + err.message);
+            }
+        }
+
+        async function saveAutoRecharge() {
+            const enabled = document.getElementById('autoRechargeEnabled').checked;
+            const threshold = enabled ? parseFloat(document.getElementById('autoRechargeThreshold').value) : null;
+            const amount = enabled ? parseFloat(document.getElementById('autoRechargeAmount').value) : null;
+
+            try {
+                const profileRes = await fetch('/api/profile', { credentials: 'include' });
+                const profileData = await profileRes.json();
+                const userId = profileData.id;
+
+                const res = await fetch(`/api/users/${userId}/auto-recharge`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        enabled,
+                        threshold,
+                        amount
+                    })
+                });
+
+                const data = await res.json();
+                alert('✅ Auto-recharge settings saved!');
+            } catch (err) {
+                alert('❌ Error: ' + err.message);
+            }
+        }
+
         // Settings functions
         function loadSettings() {
             fetch('/api/profile', {
@@ -1060,11 +1296,9 @@
             })
             .then(res => res.json())
             .then(data => {
-                if (data.openai_api_key) document.getElementById('openaiKey').value = data.openai_api_key;
                 if (data.wordpress_rest_api_url) document.getElementById('wpUrl').value = data.wordpress_rest_api_url;
                 if (data.wordpress_username) document.getElementById('wpUsername').value = data.wordpress_username;
                 if (data.wordpress_password) document.getElementById('wpPassword').value = data.wordpress_password;
-                if (data.perplexity_api_token) document.getElementById('perplexityToken').value = data.perplexity_api_token;
                 if (data.system_prompt) document.getElementById('systemPrompt').value = data.system_prompt;
 
                 // Load brand colors
@@ -1084,19 +1318,6 @@
             .catch(err => console.error('Error loading settings:', err));
         }
 
-        function saveOpenAI() {
-            const apiKey = document.getElementById('openaiKey').value;
-            fetch('/api/update_integrations', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ openai_api_key: apiKey })
-            })
-            .then(res => res.json())
-            .then(data => alert('✅ OpenAI settings saved!'))
-            .catch(err => alert('❌ Error: ' + err.message));
-        }
-
         function saveWordPress() {
             fetch('/api/update_integrations', {
                 method: 'POST',
@@ -1110,19 +1331,6 @@
             })
             .then(res => res.json())
             .then(data => alert('✅ WordPress settings saved!'))
-            .catch(err => alert('❌ Error: ' + err.message));
-        }
-
-        function savePerplexity() {
-            const token = document.getElementById('perplexityToken').value;
-            fetch('/api/update_integrations', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ perplexity_api_token: token })
-            })
-            .then(res => res.json())
-            .then(data => alert('✅ Perplexity AI settings saved!'))
             .catch(err => alert('❌ Error: ' + err.message));
         }
 
@@ -1290,6 +1498,7 @@
         window.addEventListener('load', () => {
             loadSettings();
             updateStats();
+            loadCredits(); // Load credit balance for display
         });
     </script>
 
