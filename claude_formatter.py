@@ -46,8 +46,23 @@ def get_premium_layout_example() -> str:
             --accent-color: #8b7355;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+        /* WordPress Editor Compatibility - Reset unwanted styles */
+        .magazine-article-wrapper * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Override WordPress/Elementor default heading colors */
+        .magazine-article-wrapper h1,
+        .magazine-article-wrapper h2,
+        .magazine-article-wrapper h3,
+        .magazine-article-wrapper h4,
+        .magazine-article-wrapper h5,
+        .magazine-article-wrapper h6 {
+            color: inherit !important;
+        }
+
         body {
             font-family: 'Roboto', sans-serif;
             line-height: 1.8;
@@ -70,33 +85,36 @@ def get_premium_layout_example() -> str:
             justify-content: flex-end;
             align-items: center;
             text-align: center;
-            color: white;
+            color: white !important;
             padding: 20px;
         }
-        
+
         .cover h1 {
-            font-family: 'Playfair Display', serif;
-            font-size: 4.5em;
-            margin: 0;
-            text-shadow: 3px 3px 6px rgba(0,0,0,0.6);
-            line-height: 1.1;
+            font-family: 'Playfair Display', serif !important;
+            font-size: 4.5em !important;
+            margin: 0 !important;
+            color: white !important;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.6) !important;
+            line-height: 1.1 !important;
         }
         
         .cover .subtitle {
-            font-size: 1.6em;
-            margin: 20px 0 0;
-            font-weight: 400;
+            font-size: 1.6em !important;
+            margin: 20px 0 0 !important;
+            font-weight: 400 !important;
             max-width: 800px;
+            color: white !important;
         }
-        
+
         .cover .edition {
-            background-color: var(--brand-color);
-            padding: 10px 25px;
-            margin-top: 30px;
-            margin-bottom: 50px;
-            font-weight: 700;
-            border-radius: 5px;
-            font-size: 1.1em;
+            background-color: var(--brand-color) !important;
+            padding: 10px 25px !important;
+            margin-top: 30px !important;
+            margin-bottom: 50px !important;
+            font-weight: 700 !important;
+            border-radius: 5px !important;
+            font-size: 1.1em !important;
+            color: white !important;
         }
         
         .section-header {
@@ -105,23 +123,26 @@ def get_premium_layout_example() -> str:
             background-position: center;
             display: flex;
             align-items: flex-end;
-            color: white;
+            color: white !important;
             padding: 40px;
             position: relative;
         }
-        
+
         .section-header::before {
             content: '';
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
             background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%);
+            z-index: 0;
         }
-        
+
         .section-header h2 {
-            font-family: 'Playfair Display', serif;
-            font-size: 3.8em;
-            margin: 0;
-            z-index: 1;
+            font-family: 'Playfair Display', serif !important;
+            font-size: 3.8em !important;
+            margin: 0 !important;
+            color: white !important;
+            z-index: 1 !important;
+            position: relative !important;
         }
         
         .content-area {
@@ -213,6 +234,7 @@ def get_premium_layout_example() -> str:
     </style>
 </head>
 <body>
+    <div class="magazine-article-wrapper">
     <div class="magazine-container">
         <div class="cover">
             <h1>Article Title Here</h1>
@@ -271,6 +293,7 @@ def get_premium_layout_example() -> str:
             </div>
         </div>
     </div>
+    </div><!-- .magazine-article-wrapper -->
 </body>
 </html>"""
 
@@ -357,8 +380,10 @@ CRITICAL REQUIREMENTS:
 - Extract actual content from the article for pull quotes and stats
 - Maintain the 2-column grid layout (main + sidebar)
 - Ensure mobile responsive (@media query is already in example)
+- WRAP all body content in: <div class="magazine-article-wrapper">...</div>
+- This wrapper is CRITICAL for WordPress/Elementor compatibility
 
-OUTPUT: Complete formatted HTML document ready for WordPress."""
+OUTPUT: Complete formatted HTML document ready for WordPress with wrapper div."""
 
     try:
         logger.info(f"[Claude Formatter] Formatting article: {title[:60]}")
