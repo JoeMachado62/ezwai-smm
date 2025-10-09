@@ -198,66 +198,107 @@ def generate_images_with_seedream(
     results = []
 
     for i, prompt in enumerate(prompts):
-        try:
-            logger.info(f"[SeeDream] Generating image {i+1}/{len(prompts)}: {prompt[:80]}...")
+        max_retries = 1  # Try once, retry once if timeout
+        retry_count = 0
+        image_generated = False
 
-            # Create prediction with manual polling to prevent infinite loops
-            prediction = replicate.predictions.create(
-                model="bytedance/seedream-4",
-                input={
-                    "prompt": prompt,
-                    "aspect_ratio": aspect_ratio,
-                    "output_format": "jpg",
-                    "output_quality": 90,
-                    "num_outputs": 1,
-                    "guidance_scale": 5.0,
-                    "num_inference_steps": 28,
-                    "disable_safety_checker": False
-                }
-            )
+        while retry_count <= max_retries and not image_generated:
+            try:
+                attempt_num = retry_count + 1
+                if retry_count > 0:
+                    logger.info(f"[SeeDream] RETRY {retry_count}/{max_retries} for image {i+1}")
+                else:
+                    logger.info(f"[SeeDream] Generating image {i+1}/{len(prompts)}: {prompt[:80]}...")
 
-            # Poll with 4-minute timeout per image (sufficient for SeeDream-4)
-            from datetime import datetime, timedelta
-            import time
+                # Create prediction with manual polling to prevent infinite loops
+                prediction = replicate.predictions.create(
+                    model="bytedance/seedream-4",
+                    input={
+                        "prompt": prompt,
+                        "aspect_ratio": aspect_ratio,
+                        "output_format": "jpg",
+                        "output_quality": 90,
+                        "num_outputs": 1,
+                        "guidance_scale": 5.0,
+                        "num_inference_steps": 28,
+                        "disable_safety_checker": False
+                    }
+                )
 
-            timeout = datetime.now() + timedelta(minutes=4)
-            poll_interval = 1  # Check every second
+                # Log prediction ID immediately for debugging
+                logger.info(f"[SeeDream] Created prediction ID: {prediction.id}")
 
-            while datetime.now() < timeout:
-                prediction.reload()
+                # Poll with 4-minute timeout per image (sufficient for SeeDream-4)
+                from datetime import datetime, timedelta
+                import time
 
-                if prediction.status == "succeeded":
-                    if prediction.output and len(prediction.output) > 0:
-                        image_url = prediction.output[0]
-                        results.append(image_url)
-                        logger.info(f"[SeeDream] Image {i+1} succeeded: {image_url[:60]}...")
-                    else:
-                        logger.error(f"[SeeDream] No output for prompt {i+1}")
+                timeout = datetime.now() + timedelta(minutes=4)
+                poll_interval = 1  # Check every second
+                last_status = None
+
+                while datetime.now() < timeout:
+                    prediction.reload()
+
+                    # Log status changes for debugging
+                    if prediction.status != last_status:
+                        logger.info(f"[SeeDream] Prediction {prediction.id} status: {prediction.status}")
+                        last_status = prediction.status
+
+                    if prediction.status == "succeeded":
+                        if prediction.output and len(prediction.output) > 0:
+                            image_url = prediction.output[0]
+                            results.append(image_url)
+                            logger.info(f"[SeeDream] Image {i+1} succeeded: {image_url[:60]}...")
+                            image_generated = True
+                        else:
+                            logger.error(f"[SeeDream] No output for image {i+1}")
+                            results.append(None)
+                            image_generated = True
+                        break
+
+                    elif prediction.status in ["failed", "canceled"]:
+                        logger.error(f"[SeeDream] Image {i+1} {prediction.status}: {getattr(prediction, 'error', 'Unknown error')}")
                         results.append(None)
-                    break
+                        image_generated = True
+                        break
 
-                elif prediction.status in ["failed", "canceled"]:
-                    logger.error(f"[SeeDream] Image {i+1} {prediction.status}: {getattr(prediction, 'error', 'Unknown error')}")
+                    # Still processing, wait before next check
+                    time.sleep(poll_interval)
+                else:
+                    # Timeout reached - prediction never completed
+                    logger.error(f"[SeeDream] Image {i+1} TIMED OUT after 4 minutes (Prediction ID: {prediction.id})")
+
+                    # Cancel the stuck prediction
+                    try:
+                        prediction.cancel()
+                        logger.info(f"[SeeDream] ✅ Canceled stuck prediction: {prediction.id}")
+                        time.sleep(2)  # Wait 2 seconds before retry
+                    except Exception as cancel_error:
+                        logger.warning(f"[SeeDream] Could not cancel prediction: {cancel_error}")
+
+                    # If we have retries left, try again with NEW prediction
+                    if retry_count < max_retries:
+                        logger.info(f"[SeeDream] Will retry image {i+1} with NEW prediction...")
+                        retry_count += 1
+                        continue  # Try again
+                    else:
+                        logger.error(f"[SeeDream] All {max_retries + 1} attempts failed for image {i+1}")
+                        results.append(None)
+                        image_generated = True
+
+            except Exception as e:
+                logger.error(f"[SeeDream] Error generating image {i+1} (attempt {attempt_num}): {e}")
+                import traceback
+                logger.error(f"[SeeDream] Traceback: {traceback.format_exc()}")
+
+                if retry_count < max_retries:
+                    logger.info(f"[SeeDream] Will retry after error...")
+                    retry_count += 1
+                    time.sleep(2)
+                    continue
+                else:
                     results.append(None)
-                    break
-
-                # Still processing, wait before next check
-                time.sleep(poll_interval)
-            else:
-                # Timeout reached - prediction never completed
-                logger.error(f"[SeeDream] Image {i+1} TIMED OUT after 4 minutes - canceling prediction")
-                try:
-                    prediction.cancel()
-                    logger.info(f"[SeeDream] Canceled stuck prediction: {prediction.id}")
-                except Exception as cancel_error:
-                    logger.warning(f"[SeeDream] Could not cancel prediction: {cancel_error}")
-                results.append(None)
-
-        except Exception as e:
-            logger.error(f"[SeeDream] Error generating image {i+1}: {e}")
-            import traceback
-            logger.error(f"[SeeDream] Traceback: {traceback.format_exc()}")
-            results.append(None)
+                    image_generated = True
 
     return results
 
