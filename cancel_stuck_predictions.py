@@ -3,9 +3,15 @@ Utility script to cancel stuck Replicate predictions
 Run this to clean up predictions that are stuck in "starting" or "processing" status
 """
 import os
+import sys
 import replicate
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+from dateutil import parser
+
+# Set UTF-8 encoding for Windows console
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding='utf-8')
 
 # Load environment variables
 load_dotenv()
@@ -33,11 +39,18 @@ def list_and_cancel_stuck_predictions():
 
         # Filter stuck predictions (older than 10 minutes and still starting/processing)
         stuck_predictions = []
-        cutoff_time = datetime.now() - timedelta(minutes=10)
+        cutoff_time = datetime.now(datetime.now().astimezone().tzinfo) - timedelta(minutes=10)
 
         for pred in predictions:
             status = pred.status
             created_at = pred.created_at
+
+            # Parse created_at if it's a string
+            if isinstance(created_at, str):
+                try:
+                    created_at = parser.parse(created_at)
+                except:
+                    created_at = None
 
             # Check if prediction is stuck
             is_old_enough = created_at < cutoff_time if created_at else True
@@ -62,13 +75,6 @@ def list_and_cancel_stuck_predictions():
             print(f"  Created: {pred.created_at}")
             print()
 
-        # Ask for confirmation
-        response = input(f"Cancel all {len(stuck_predictions)} stuck predictions? (yes/no): ").strip().lower()
-
-        if response not in ['yes', 'y']:
-            print("\n❌ Cancelled by user")
-            return
-
         print("\nCancelling stuck predictions...\n")
 
         success_count = 0
@@ -80,7 +86,11 @@ def list_and_cancel_stuck_predictions():
                 print(f"✅ Canceled: {pred.id}")
                 success_count += 1
             except Exception as e:
-                print(f"❌ Failed to cancel {pred.id}: {e}")
+                # 404 errors mean prediction is too old to cancel (will timeout naturally)
+                if "404" in str(e):
+                    print(f"ℹ️  {pred.id}: Too old to cancel (will timeout naturally)")
+                else:
+                    print(f"❌ Failed to cancel {pred.id}: {e}")
                 error_count += 1
 
         print()
@@ -111,13 +121,14 @@ def cancel_specific_prediction(prediction_id):
             print(f"⚠️  Prediction already in terminal state: {prediction.status}")
             return
 
-        response = input("Cancel this prediction? (yes/no): ").strip().lower()
-
-        if response in ['yes', 'y']:
+        try:
             prediction.cancel()
             print(f"✅ Canceled: {prediction_id}")
-        else:
-            print("❌ Cancelled by user")
+        except Exception as cancel_error:
+            if "404" in str(cancel_error):
+                print(f"ℹ️  Too old to cancel (will timeout naturally)")
+            else:
+                print(f"❌ Error canceling: {cancel_error}")
 
     except Exception as e:
         print(f"❌ Error: {e}")
