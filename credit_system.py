@@ -13,10 +13,81 @@ logger = logging.getLogger(__name__)
 # Initialize Stripe with API key from environment
 stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
 
-# Pricing configuration
-ARTICLE_COST = 1.99  # Cost per article generation
-WELCOME_CREDIT = 5.00  # Welcome credit for new users
-MIN_PURCHASE = 10.00  # Minimum credit purchase
+# Pricing configuration - CREDIT-BASED SYSTEM
+# Each article costs 1 CREDIT
+ARTICLE_COST = 1  # Cost per article generation (in credits, not dollars)
+WELCOME_CREDIT = 3  # Welcome credits for new users (3 free articles)
+MIN_PURCHASE = 10.00  # Minimum dollar purchase amount
+
+# Tiered pricing: price per article based on purchase amount
+# Format: (max_purchase_amount, price_per_article)
+PRICING_TIERS = [
+    (99.50, 1.99),      # $0.01-$99.50 = $1.99/article (up to 50 articles)
+    (175.00, 1.75),     # $99.51-$175.00 = $1.75/article (51-100 articles)
+    (375.00, 1.50),     # $175.01-$375.00 = $1.50/article (101-250 articles)
+    (625.00, 1.25),     # $375.01-$625.00 = $1.25/article (251-500 articles)
+    (float('inf'), 0.99)  # $625.01+ = $0.99/article (501+ articles)
+]
+
+# Credit packages for UI display
+CREDIT_PACKAGES = [
+    {"amount": 10.00, "credits": 5, "per_article": 1.99, "label": "$10 - Starter (5 articles)"},
+    {"amount": 25.00, "credits": 12, "per_article": 1.99, "label": "$25 - Basic (12 articles)"},
+    {"amount": 50.00, "credits": 25, "per_article": 1.99, "label": "$50 - Plus (25 articles)"},
+    {"amount": 100.00, "credits": 57, "per_article": 1.75, "label": "$100 - Pro (57 articles)"},
+    {"amount": 250.00, "credits": 166, "per_article": 1.50, "label": "$250 - Business (166 articles)"},
+    {"amount": 500.00, "credits": 400, "per_article": 1.25, "label": "$500 - Premium (400 articles)"},
+    {"amount": 1000.00, "credits": 1010, "per_article": 0.99, "label": "$1000 - Enterprise (1010 articles)"},
+]
+
+def calculate_credits_from_purchase(purchase_amount: float) -> int:
+    """
+    Calculate how many credits to give based on purchase amount using tiered pricing
+
+    Args:
+        purchase_amount: Dollar amount of purchase
+
+    Returns:
+        int: Number of credits to award
+
+    Examples:
+        $10.00 → 5 credits (at $1.99/article)
+        $100.00 → 57 credits (at $1.75/article)
+        $500.00 → 400 credits (at $1.25/article)
+        $1000.00 → 1010 credits (at $0.99/article)
+    """
+    if purchase_amount < MIN_PURCHASE:
+        return 0
+
+    # Find the appropriate tier
+    price_per_article = 1.99  # Default to highest tier
+    for max_amount, tier_price in PRICING_TIERS:
+        if purchase_amount <= max_amount:
+            price_per_article = tier_price
+            break
+
+    # Calculate credits (rounded down to whole number)
+    credits = int(purchase_amount / price_per_article)
+
+    logger.info(f"[Credits] Purchase ${purchase_amount:.2f} at ${price_per_article}/article = {credits} credits")
+    return credits
+
+
+def get_price_per_article(purchase_amount: float) -> float:
+    """
+    Get the price per article for a given purchase amount
+
+    Args:
+        purchase_amount: Dollar amount of purchase
+
+    Returns:
+        float: Price per article for this purchase tier
+    """
+    for max_amount, tier_price in PRICING_TIERS:
+        if purchase_amount <= max_amount:
+            return tier_price
+    return 0.99  # Default to best tier
+
 
 def check_sufficient_credits(user) -> Tuple[bool, str]:
     """
@@ -34,13 +105,16 @@ def check_sufficient_credits(user) -> Tuple[bool, str]:
 
     # Handle legacy users with NULL credit_balance
     if user.credit_balance is None:
-        return False, f"Credit balance not initialized. Please contact support or run migration script."
+        return False, f"Credit balance not initialized. Please contact support."
 
-    if user.credit_balance >= ARTICLE_COST:
+    # Convert to int for credit-based system
+    credits = int(user.credit_balance) if isinstance(user.credit_balance, float) else user.credit_balance
+
+    if credits >= ARTICLE_COST:
         return True, ""
     else:
-        needed = ARTICLE_COST - user.credit_balance
-        return False, f"Insufficient credits. You need ${needed:.2f} more. Current balance: ${user.credit_balance:.2f}"
+        needed = ARTICLE_COST - credits
+        return False, f"Insufficient credits. You need {needed} more credit(s). Current balance: {credits} credits"
 
 
 def deduct_credits(user, db) -> bool:
@@ -59,23 +133,28 @@ def deduct_credits(user, db) -> bool:
     try:
         # Handle legacy users with NULL fields
         if user.credit_balance is None:
-            user.credit_balance = 0.00
+            user.credit_balance = 0
         if user.total_articles_generated is None:
             user.total_articles_generated = 0
         if user.total_spent is None:
             user.total_spent = 0.00
 
+        # Convert float to int for credit-based system
+        if isinstance(user.credit_balance, float):
+            user.credit_balance = int(user.credit_balance)
+
         # Admin users don't get charged (unlimited credits)
         if not user.is_admin:
-            user.credit_balance -= ARTICLE_COST
-            user.total_spent += ARTICLE_COST
+            user.credit_balance -= ARTICLE_COST  # Deduct 1 credit
+            # Note: total_spent stays in dollars for accounting purposes
+            # We'll calculate it based on actual purchase amounts, not deductions
 
         user.total_articles_generated += 1
 
         # Log transaction
         transaction = CreditTransaction(
             user_id=user.id,
-            amount=-ARTICLE_COST if not user.is_admin else 0,
+            amount=-ARTICLE_COST if not user.is_admin else 0,  # -1 credit
             transaction_type='article_generation' if not user.is_admin else 'admin_article_generation',
             balance_after=user.credit_balance,
             description=f'Article generation (#{user.total_articles_generated})' + (' [ADMIN - FREE]' if user.is_admin else '')
@@ -84,9 +163,9 @@ def deduct_credits(user, db) -> bool:
         db.session.commit()
 
         if user.is_admin:
-            logger.info(f"[Credits] ADMIN user {user.id} generated article (no charge). Balance unchanged: ${user.credit_balance:.2f}")
+            logger.info(f"[Credits] ADMIN user {user.id} generated article (no charge). Balance unchanged: {user.credit_balance} credits")
         else:
-            logger.info(f"[Credits] Deducted ${ARTICLE_COST} from user {user.id}. New balance: ${user.credit_balance:.2f}")
+            logger.info(f"[Credits] Deducted {ARTICLE_COST} credit from user {user.id}. New balance: {user.credit_balance} credits")
 
         # Check if auto-recharge needed
         if user.auto_recharge_enabled and user.credit_balance < user.auto_recharge_threshold:
@@ -117,20 +196,23 @@ def refund_credits(user, db, reason: str = "Article generation failed") -> bool:
     try:
         # Handle legacy users with NULL fields
         if user.credit_balance is None:
-            user.credit_balance = 0.00
+            user.credit_balance = 0
         if user.total_articles_generated is None:
             user.total_articles_generated = 0
         if user.total_spent is None:
             user.total_spent = 0.00
 
-        user.credit_balance += ARTICLE_COST
+        # Convert float to int
+        if isinstance(user.credit_balance, float):
+            user.credit_balance = int(user.credit_balance)
+
+        user.credit_balance += ARTICLE_COST  # Add back 1 credit
         user.total_articles_generated -= 1  # Reverse the increment
-        user.total_spent -= ARTICLE_COST
 
         # Log refund transaction
         transaction = CreditTransaction(
             user_id=user.id,
-            amount=ARTICLE_COST,
+            amount=ARTICLE_COST,  # +1 credit
             transaction_type='refund',
             balance_after=user.credit_balance,
             description=f'Refund: {reason}'
@@ -138,7 +220,7 @@ def refund_credits(user, db, reason: str = "Article generation failed") -> bool:
         db.session.add(transaction)
         db.session.commit()
 
-        logger.info(f"[Credits] Refunded ${ARTICLE_COST} to user {user.id}. New balance: ${user.credit_balance:.2f}")
+        logger.info(f"[Credits] Refunded {ARTICLE_COST} credit to user {user.id}. New balance: {user.credit_balance} credits")
         return True
     except Exception as e:
         logger.error(f"[Credits] Error refunding credits for user {user.id}: {e}")
@@ -230,13 +312,13 @@ def trigger_auto_recharge(user, db):
         logger.error(f"[Auto-Recharge] Error for user {user.id}: {e}")
 
 
-def add_credits_manual(user_id: int, amount: float, payment_intent_id: str, db) -> bool:
+def add_credits_manual(user_id: int, purchase_amount: float, payment_intent_id: str, db) -> bool:
     """
-    Add credits after successful manual purchase
+    Add credits after successful manual purchase using tiered pricing
 
     Args:
         user_id: User ID
-        amount: Credit amount to add
+        purchase_amount: Dollar amount of purchase (e.g., 25.00, 100.00, 500.00)
         payment_intent_id: Stripe payment intent ID
         db: SQLAlchemy database instance
 
@@ -251,20 +333,39 @@ def add_credits_manual(user_id: int, amount: float, payment_intent_id: str, db) 
             logger.error(f"[Credits] User {user_id} not found")
             return False
 
-        user.credit_balance += amount
+        # Calculate credits based on tiered pricing
+        credits_to_add = calculate_credits_from_purchase(purchase_amount)
+
+        if credits_to_add == 0:
+            logger.error(f"[Credits] Purchase amount ${purchase_amount:.2f} below minimum ${MIN_PURCHASE:.2f}")
+            return False
+
+        # Convert float to int if needed
+        if isinstance(user.credit_balance, float):
+            user.credit_balance = int(user.credit_balance)
+
+        user.credit_balance += credits_to_add
+
+        # Update total spent (in dollars for accounting)
+        if user.total_spent is None:
+            user.total_spent = 0.00
+        user.total_spent += purchase_amount
+
+        # Get price per article for this tier
+        price_per_article = get_price_per_article(purchase_amount)
 
         transaction = CreditTransaction(
             user_id=user_id,
-            amount=amount,
+            amount=credits_to_add,  # Store credits, not dollars
             transaction_type='purchase',
             stripe_payment_intent_id=payment_intent_id,
             balance_after=user.credit_balance,
-            description=f'Credit purchase ${amount:.2f}'
+            description=f'Purchased {credits_to_add} credits for ${purchase_amount:.2f} (${price_per_article:.2f}/article)'
         )
         db.session.add(transaction)
         db.session.commit()
 
-        logger.info(f"[Credits] Added ${amount:.2f} to user {user_id}. New balance: ${user.credit_balance:.2f}")
+        logger.info(f"[Credits] Added {credits_to_add} credits to user {user_id} (${purchase_amount:.2f} at ${price_per_article:.2f}/article). New balance: {user.credit_balance} credits")
         return True
     except Exception as e:
         logger.error(f"[Credits] Error adding credits to user {user_id}: {e}")
@@ -274,7 +375,7 @@ def add_credits_manual(user_id: int, amount: float, payment_intent_id: str, db) 
 
 def add_welcome_credit(user_id: int, db) -> bool:
     """
-    Add welcome credit to new user
+    Add welcome credits to new user (3 free articles)
 
     Args:
         user_id: User ID
@@ -301,20 +402,20 @@ def add_welcome_credit(user_id: int, db) -> bool:
             logger.warning(f"[Credits] User {user_id} already received welcome credit")
             return False
 
-        # Add welcome credit
+        # Add welcome credits (3 free articles)
         user.credit_balance = WELCOME_CREDIT
 
         transaction = CreditTransaction(
             user_id=user_id,
-            amount=WELCOME_CREDIT,
+            amount=WELCOME_CREDIT,  # 3 credits
             transaction_type='welcome',
             balance_after=WELCOME_CREDIT,
-            description=f'Welcome credit ${WELCOME_CREDIT:.2f}'
+            description=f'Welcome bonus: {WELCOME_CREDIT} free credits'
         )
         db.session.add(transaction)
         db.session.commit()
 
-        logger.info(f"[Credits] Added welcome credit ${WELCOME_CREDIT:.2f} to user {user_id}")
+        logger.info(f"[Credits] Added {WELCOME_CREDIT} welcome credits to user {user_id}")
         return True
     except Exception as e:
         logger.error(f"[Credits] Error adding welcome credit to user {user_id}: {e}")
