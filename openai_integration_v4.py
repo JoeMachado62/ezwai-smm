@@ -30,6 +30,48 @@ from wordpress_integration import load_user_env as wp_load_user_env, download_im
 logger = logging.getLogger(__name__)
 
 
+def _download_and_convert_to_base64(image_url: str) -> Optional[str]:
+    """
+    Download image from Replicate URL and convert to base64 data URI.
+    Must be called within 60-minute Replicate expiry window.
+
+    Args:
+        image_url: Replicate image URL (expires in 60 minutes)
+
+    Returns:
+        Base64 data URI string (e.g., "data:image/jpeg;base64,/9j/4AAQ...") or None if failed
+    """
+    import requests
+    import base64
+    from io import BytesIO
+
+    try:
+        logger.info(f"[DOWNLOAD] Fetching image from: {image_url[:80]}...")
+
+        response = requests.get(image_url, timeout=30)
+        response.raise_for_status()
+
+        # Detect image type from Content-Type header
+        content_type = response.headers.get('Content-Type', 'image/jpeg')
+        image_format = content_type.split('/')[-1]  # e.g., "jpeg", "png", "webp"
+
+        # Convert to base64
+        image_data = base64.b64encode(response.content).decode('utf-8')
+        base64_uri = f"data:{content_type};base64,{image_data}"
+
+        size_kb = len(response.content) / 1024
+        logger.info(f"[DOWNLOAD] ✅ Converted to base64 ({size_kb:.1f} KB, format: {image_format})")
+
+        return base64_uri
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"[DOWNLOAD] Failed to download image: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"[DOWNLOAD] Failed to convert to base64: {e}")
+        return None
+
+
 def _save_raw_article(article_data: Dict, user_id: int, stage: str) -> None:
     """
     Save raw article content to disk at various pipeline stages.
@@ -342,7 +384,8 @@ def create_blog_post_with_images_v4(
     perplexity_research: str,
     user_id: int,
     user_system_prompt: str,
-    writing_style: Optional[str] = None
+    writing_style: Optional[str] = None,
+    local_mode: bool = False
 ) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
     """
     V4 Modular Pipeline Orchestrator with Structured Article Generation
@@ -352,6 +395,7 @@ def create_blog_post_with_images_v4(
         user_id: User ID for environment
         user_system_prompt: User's custom prompt
         writing_style: Optional writing style for tone/visuals
+        local_mode: If True, skip WordPress upload and embed images as base64 in self-contained HTML
 
     Returns:
         (result_dict, error_message)
@@ -359,8 +403,8 @@ def create_blog_post_with_images_v4(
         {
             "title": "Article title",
             "content": "Fully styled HTML with magazine components and images",
-            "hero_image_url": "...",
-            "section_images": [...],
+            "hero_image_url": "...",  # Base64 data URI if local_mode=True
+            "section_images": [...],  # Base64 data URIs if local_mode=True
             "all_images": [...],
             "summary": "...",
             "prompts": {...},
@@ -430,25 +474,36 @@ def create_blog_post_with_images_v4(
 
         logger.info(f"[STEP 3] ✅ Generated {1 + len(section_images_tmp)} images")
 
-        # STEP 3.5: Persist images to WordPress
-        logger.info("\n[STEP 3.5] Uploading images to WordPress media library...")
+        # STEP 3.5: Handle image persistence (WordPress OR local base64)
+        if local_mode:
+            logger.info("\n[STEP 3.5] LOCAL MODE: Using Replicate URLs directly for Claude formatting...")
+            logger.info("[STEP 3.5] Images will be downloaded and embedded as base64 after formatting")
 
-        hero_image_url = persist_image_to_wordpress(hero_image_tmp, user_id)
-        if not hero_image_url:
-            logger.error("[STEP 3.5] Hero image persistence failed")
-            return None, "Hero image upload failed"
+            # Keep Replicate URLs for now (valid for 60 minutes)
+            hero_image_url = hero_image_tmp
+            section_image_urls = section_images_tmp
+            all_images = [hero_image_url] + section_image_urls
 
-        section_image_urls = []
-        for i, tmp_url in enumerate(section_images_tmp):
-            wp_url = persist_image_to_wordpress(tmp_url, user_id)
-            if wp_url:
-                section_image_urls.append(wp_url)
-            else:
-                logger.warning(f"[STEP 3.5] Section image {i+1} persistence failed")
+            logger.info(f"[STEP 3.5] ✅ {len(all_images)} Replicate URLs ready (60-minute window)")
+        else:
+            logger.info("\n[STEP 3.5] Uploading images to WordPress media library...")
 
-        all_images = [hero_image_url] + section_image_urls
+            hero_image_url = persist_image_to_wordpress(hero_image_tmp, user_id)
+            if not hero_image_url:
+                logger.error("[STEP 3.5] Hero image persistence failed")
+                return None, "Hero image upload failed"
 
-        logger.info(f"[STEP 3.5] ✅ Uploaded {len(all_images)} images to WordPress")
+            section_image_urls = []
+            for i, tmp_url in enumerate(section_images_tmp):
+                wp_url = persist_image_to_wordpress(tmp_url, user_id)
+                if wp_url:
+                    section_image_urls.append(wp_url)
+                else:
+                    logger.warning(f"[STEP 3.5] Section image {i+1} persistence failed")
+
+            all_images = [hero_image_url] + section_image_urls
+
+            logger.info(f"[STEP 3.5] ✅ Uploaded {len(all_images)} images to WordPress")
 
         # STEP 4: Assemble magazine layout with components
         logger.info("\n[STEP 4] Assembling magazine layout...")
@@ -511,6 +566,46 @@ def create_blog_post_with_images_v4(
         else:
             logger.info(f"[STEP 4] ✅ Claude AI layout assembled - {len(final_html)} characters")
 
+        # STEP 4.5: For LOCAL MODE, download images and replace URLs with base64
+        if local_mode:
+            logger.info("\n[STEP 4.5] LOCAL MODE: Downloading images and embedding as base64...")
+            logger.info("[STEP 4.5] ⚠️ Must complete within 60-minute Replicate expiry window")
+
+            # Download hero image
+            hero_base64 = _download_and_convert_to_base64(hero_image_url)
+            if not hero_base64:
+                logger.error("[STEP 4.5] Failed to download hero image")
+                return None, "Hero image download failed (URL may have expired)"
+
+            # Download section images
+            section_base64_list = []
+            for i, section_url in enumerate(section_image_urls):
+                section_base64 = _download_and_convert_to_base64(section_url)
+                if section_base64:
+                    section_base64_list.append(section_base64)
+                else:
+                    logger.warning(f"[STEP 4.5] Failed to download section image {i+1}")
+
+            logger.info(f"[STEP 4.5] ✅ Downloaded {1 + len(section_base64_list)} images as base64")
+
+            # Replace Replicate URLs with base64 in formatted HTML
+            logger.info("[STEP 4.5] Replacing Replicate URLs with base64 data URIs...")
+
+            # Replace hero URL
+            final_html = final_html.replace(hero_image_url, hero_base64)
+
+            # Replace section URLs
+            for i, section_url in enumerate(section_image_urls):
+                if i < len(section_base64_list):
+                    final_html = final_html.replace(section_url, section_base64_list[i])
+
+            # Update URLs in result dict to base64
+            hero_image_url = hero_base64
+            section_image_urls = section_base64_list
+            all_images = [hero_image_url] + section_image_urls
+
+            logger.info(f"[STEP 4.5] ✅ All URLs replaced with base64 ({len(final_html)} chars)")
+
         # SAVE POINT #2: Save formatted article with styling
         _save_formatted_article(final_html, title, user_id, hero_image_url, section_image_urls)
 
@@ -523,9 +618,15 @@ def create_blog_post_with_images_v4(
             return None, "CSS styling missing"
 
         # Check for hero section (now a div with inline styles, not class)
-        if "background-image" not in final_html or hero_image_url not in final_html:
-            logger.error("[VALIDATION] Hero section missing")
-            return None, "Hero section missing"
+        # In local mode, hero_image_url is base64, so just check for background-image
+        if local_mode:
+            if "background-image" not in final_html or "data:image/" not in final_html:
+                logger.error("[VALIDATION] Hero section missing")
+                return None, "Hero section missing"
+        else:
+            if "background-image" not in final_html or hero_image_url not in final_html:
+                logger.error("[VALIDATION] Hero section missing")
+                return None, "Hero section missing"
 
         # Check for executive summary
         if "Executive Summary" not in final_html and article_data.get("executive_summary"):
