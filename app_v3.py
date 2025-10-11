@@ -23,6 +23,7 @@ from openai_integration_v4 import create_blog_post_with_images_v4  # V4 modular 
 from wordpress_integration import create_wordpress_post
 from email_notification import send_email_notification
 from email_verification import generate_verification_code, get_code_expiry, send_verification_email, verify_code
+from purchase_receipt_email import send_purchase_receipt_email
 import traceback
 import stripe
 from credit_system import (
@@ -107,8 +108,8 @@ class User(UserMixin, db.Model):  # type: ignore[misc,name-defined]
     last_query_index = db.Column(db.Integer, default=0)  # type: ignore[var-annotated]
 
     # Brand customization
-    brand_primary_color = db.Column(db.String(7), default='#08b2c6')  # type: ignore[var-annotated]
-    brand_accent_color = db.Column(db.String(7), default='#ff6b11')  # type: ignore[var-annotated]
+    brand_primary_color = db.Column(db.String(7), default='#6B5DD3')  # type: ignore[var-annotated]  # Purple
+    brand_accent_color = db.Column(db.String(7), default='#FF6B4A')  # type: ignore[var-annotated]  # Coral
     use_default_branding = db.Column(db.Boolean, default=True)  # type: ignore[var-annotated]
 
     # 2FA email verification fields
@@ -118,10 +119,10 @@ class User(UserMixin, db.Model):  # type: ignore[misc,name-defined]
     verification_attempts = db.Column(db.Integer, default=0)  # type: ignore[var-annotated]
 
     # Credit system fields
-    credit_balance = db.Column(db.Float, default=5.00)  # type: ignore[var-annotated] - Welcome credit
+    credit_balance = db.Column(db.Integer, default=3)  # type: ignore[var-annotated] - Welcome credit (3 free articles)
     auto_recharge_enabled = db.Column(db.Boolean, default=False)  # type: ignore[var-annotated]
-    auto_recharge_amount = db.Column(db.Float, default=10.00)  # type: ignore[var-annotated]
-    auto_recharge_threshold = db.Column(db.Float, default=2.50)  # type: ignore[var-annotated]
+    auto_recharge_amount = db.Column(db.Float, default=25.00)  # type: ignore[var-annotated] - Dollar amount for auto-recharge
+    auto_recharge_threshold = db.Column(db.Integer, default=5)  # type: ignore[var-annotated] - Credits remaining to trigger
     stripe_customer_id = db.Column(db.String(255), unique=True)  # type: ignore[var-annotated]
     stripe_payment_method_id = db.Column(db.String(255))  # type: ignore[var-annotated]
     is_admin = db.Column(db.Boolean, default=False)  # type: ignore[var-annotated]
@@ -367,14 +368,16 @@ def create_blog_post_v3(user_id, manual_topic=None, manual_system_prompt=None, m
     elif wordpress_url.endswith('/wp-json'):
         wordpress_url = wordpress_url[:-len('/wp-json')]
 
-    # Send email notification
-    email_sent = send_email_notification(
-        post_id=post['id'],
+    # Send email notification with HTML attachment
+    from email_notification import send_article_notification_with_attachment
+    email_sent = send_article_notification_with_attachment(
         title=post['title']['rendered'],
-        content=blog_post_content[:500] + '...',  # Truncate for email
-        img_url=hero_image_url,
+        article_html=blog_post_content,  # Full HTML with styling
+        hero_image_url=hero_image_url,
         user_email=user.email,
-        wordpress_url=wordpress_url
+        mode="wordpress",
+        wordpress_url=wordpress_url,
+        post_id=post['id']
     )
 
     if not email_sent:
@@ -507,7 +510,12 @@ def verify_email():
             user.verification_code_expiry = None
             user.verification_attempts = 0
             db.session.commit()
-            return jsonify({"message": message, "verified": True}), 200
+
+            # Auto-login the user after successful email verification
+            login_user(user, remember=True)
+            app.logger.info(f"User {user.id} auto-logged in after email verification")
+
+            return jsonify({"message": message, "verified": True, "auto_login": True}), 200
         else:
             db.session.commit()
             return jsonify({"error": message, "verified": False}), 400
@@ -651,22 +659,57 @@ def verify_login():
         app.logger.error(f"Login verification error: {str(e)}")
         return jsonify({"error": "An unexpected error occurred"}), 500
 
-@app.route('/api/logout')
+@app.route('/api/logout', methods=['POST', 'GET'])
 @login_required
 def logout():
     logout_user()
+    session.clear()  # Clear all session data
     return jsonify({"message": "Logged out successfully"}), 200
+
+@app.route('/api/update_profile', methods=['POST'])
+@login_required
+def update_profile():
+    """Update user profile (name, password)"""
+    try:
+        data = request.json
+        user = User.query.get(current_user.id)
+
+        # Update name fields
+        if 'first_name' in data:
+            user.first_name = data['first_name']
+        if 'last_name' in data:
+            user.last_name = data['last_name']
+
+        # Update password if provided
+        if data.get('new_password'):
+            if not data.get('current_password'):
+                return jsonify({"error": "Current password required"}), 400
+
+            if not user.check_password(data['current_password']):
+                return jsonify({"error": "Current password is incorrect"}), 401
+
+            user.set_password(data['new_password'])
+
+        db.session.commit()
+        return jsonify({"message": "Profile updated successfully"}), 200
+
+    except Exception as e:
+        logger.error(f"Error updating profile: {e}")
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/profile', methods=['GET', 'POST'])  # type: ignore[misc]
 @login_required
 def profile():  # type: ignore[return]
     if request.method == 'GET':
         return jsonify({
+            "id": current_user.id,
             "email": current_user.email,
             "first_name": current_user.first_name,
             "last_name": current_user.last_name,
             "phone": current_user.phone,
             "billing_address": current_user.billing_address,
+            "credit_balance": current_user.credit_balance,
             "openai_api_key": current_user.openai_api_key,
             "wordpress_rest_api_url": current_user.wordpress_rest_api_url,
             "wordpress_username": current_user.wordpress_username,
@@ -674,7 +717,10 @@ def profile():  # type: ignore[return]
             "perplexity_api_token": current_user.perplexity_api_token,
             "specific_topic_queries": current_user.specific_topic_queries or {},
             "system_prompt": current_user.system_prompt,
-            "schedule": current_user.schedule or []
+            "schedule": current_user.schedule or [],
+            "brand_primary_color": current_user.brand_primary_color,
+            "brand_accent_color": current_user.brand_accent_color,
+            "use_default_branding": current_user.use_default_branding
         })
     elif request.method == 'POST':
         try:
@@ -1102,24 +1148,32 @@ def handle_checkout_completed(session):
     """Handle successful checkout session"""
     try:
         user_id = int(session['metadata']['user_id'])
-        amount = float(session['metadata']['credit_amount'])
+        purchase_amount = float(session['metadata']['credit_amount'])  # Dollar amount paid
         payment_intent_id = session.get('payment_intent')
 
-        # Add credits to user account
-        success = add_credits_manual(user_id, amount, payment_intent_id, db)
+        # Check for duplicate webhook (prevent processing same payment twice)
+        existing = CreditTransaction.query.filter_by(
+            stripe_payment_intent_id=payment_intent_id,
+            transaction_type='purchase'
+        ).first()
+
+        if existing:
+            logger.warning(f"[Stripe] Duplicate webhook detected for payment {payment_intent_id}. Skipping.")
+            return
+
+        # Add credits to user account (function calculates credits from purchase amount)
+        success = add_credits_manual(user_id, purchase_amount, payment_intent_id, db)
 
         if success:
-            logger.info(f"[Stripe] Added ${amount} credits to user {user_id}")
-
-            # Send confirmation email
+            # Get user to access updated balance and send receipt
             user = User.query.get(user_id)
             if user:
+                from credit_system import calculate_credits_from_purchase
+                credits_added = calculate_credits_from_purchase(purchase_amount)
+                logger.info(f"[Stripe] Added {credits_added} credits to user {user_id} (${purchase_amount} purchase)")
+
                 try:
-                    send_email_notification(
-                        user.email,
-                        "Credit Purchase Successful",
-                        f"Your account has been credited with ${amount:.2f}. New balance: ${user.credit_balance:.2f}"
-                    )
+                    send_purchase_receipt_email(user.email, purchase_amount, credits_added, user.credit_balance, user.first_name)
                 except Exception as email_error:
                     logger.error(f"[Stripe] Email notification failed: {email_error}")
         else:

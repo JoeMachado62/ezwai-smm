@@ -79,13 +79,16 @@ def create_blog_post(user_id):
             elif wordpress_url.endswith('/wp-json'):
                 wordpress_url = wordpress_url[:-len('/wp-json')]
 
-            email_sent = send_email_notification(
-                post_id=post['id'],
+            # Send email notification with HTML attachment
+            from email_notification import send_article_notification_with_attachment
+            email_sent = send_article_notification_with_attachment(
                 title=post['title']['rendered'],
-                content=blog_post_content[:500] + '...',
-                img_url=image_url,
+                article_html=blog_post_content,  # Full HTML with styling
+                hero_image_url=image_url,
                 user_email=user.email,
-                wordpress_url=wordpress_url
+                mode="wordpress",
+                wordpress_url=wordpress_url,
+                post_id=post['id']
             )
 
             if not email_sent:
