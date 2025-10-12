@@ -52,8 +52,9 @@ Both V3 and V4 provide:
 5. **Magazine Formatting** - Two options:
    - `claude_formatter.py` (NEW: AI-powered layout)
    - `magazine_formatter.py` (Legacy: template-based)
-6. **Publishing** (`wordpress_integration.py`) - Posts to WordPress via REST API with Application Passwords
-7. **Notification** (`email_notification.py`) - SendGrid email notifications
+6. **Database Persistence** (NEW - 2025-10-12) - V4 automatically saves articles and images to database
+7. **Publishing** (`wordpress_integration.py`) - Posts to WordPress via REST API with Application Passwords
+8. **Notification** (`email_notification.py`) - SendGrid email notifications
 
 ### Key Files
 
@@ -98,6 +99,9 @@ Both V3 and V4 provide:
 ### Database Models
 - **User** - Stores user credentials, API keys, queries, system prompts, schedules (JSON fields), and brand colors
 - **CompletedJob** - Tracks scheduled blog posts with unique constraint on (user_id, scheduled_time) to prevent duplicates
+- **CreditTransaction** - Transaction history for credit purchases and usage
+- **Article** (NEW - 2025-10-12) - Complete article history with HTML content, images, status, and metadata
+- **Image** (NEW - 2025-10-12) - Generated images with searchable prompts and metadata
 
 ## Environment Setup
 
@@ -231,6 +235,12 @@ flask db upgrade
 ### Blog Post Creation
 - `POST /api/users/<user_id>/create_test_post` - Create immediate test post with V3/V4 features
 - `POST /api/users/<user_id>/schedule` - Schedule automated posts
+
+### Article & Image Library (NEW - 2025-10-12)
+- `GET /api/users/<user_id>/articles` - List articles with search, filters, pagination
+- `GET /api/users/<user_id>/articles/<article_id>` - Get full article with HTML content
+- `GET /api/users/<user_id>/images` - List images with prompt search and filtering
+- `GET /api/users/<user_id>/images/<image_id>` - Get full image details with metadata
 
 ### System
 - `GET /api/users/<user_id>/progress` - Server-sent events for progress tracking
@@ -409,6 +419,144 @@ processed_post, error = create_blog_post_with_images_v4(
 - Quality: Basic blog post
 
 ## Important Implementation Details
+
+### Article & Image Library (NEW - 2025-10-12)
+
+**Complete Content Management System:**
+The platform now maintains a searchable library of all generated articles and images with full metadata.
+
+**Database Schema:**
+```sql
+-- Articles table
+CREATE TABLE articles (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    title VARCHAR(500) NOT NULL,
+    content_html MEDIUMTEXT NOT NULL,  -- Full formatted HTML
+    hero_image_url VARCHAR(1000),
+    section_images JSON,  -- Array of section image URLs
+    word_count INT,
+    status ENUM('draft', 'published', 'scheduled', 'failed', 'local'),
+    generation_mode ENUM('wordpress', 'local'),
+    wordpress_post_id INT,
+    wordpress_url VARCHAR(1000),
+    metadata JSON,  -- Writing style, component count, etc.
+    backup_file_path VARCHAR(500),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+);
+
+-- Images table with searchable prompts
+CREATE TABLE images (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    article_id INT,  -- Nullable for orphaned images
+    image_url VARCHAR(1000) NOT NULL,
+    image_type ENUM('hero', 'section'),
+    prompt TEXT NOT NULL,  -- FULLTEXT indexed for search
+    model VARCHAR(100) DEFAULT 'seedream-4',
+    aspect_ratio VARCHAR(20),
+    replicate_prediction_id VARCHAR(100),
+    file_size_kb INT,
+    cost_usd DECIMAL(10, 4) DEFAULT 0.0750,
+    tags JSON,
+    created_at TIMESTAMP,
+    FULLTEXT INDEX idx_prompt (prompt),  -- Full-text search
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+    FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE SET NULL
+);
+```
+
+**Automatic Persistence (V4 Pipeline):**
+```python
+# In openai_integration_v4.py - Saves automatically after generation
+def create_blog_post_with_images_v4(...):
+    # ... Generate article and images ...
+
+    # Save article to database
+    article_id = _save_article_to_database(
+        user_id=user_id,
+        title=title,
+        content_html=final_html,
+        hero_image_url=hero_image_url,
+        section_images=section_image_urls,
+        generation_mode='local' if local_mode else 'wordpress',
+        metadata={"writing_style": writing_style, "component_count": len(components)}
+    )
+
+    # Save images with prompts
+    image_data = [
+        {"url": hero_image_url, "type": "hero", "prompt": hero_prompt, ...},
+        {"url": section_url, "type": "section", "prompt": section_prompt, ...}
+    ]
+    _save_images_to_database(user_id, article_id, image_data)
+```
+
+**Dashboard UI Features:**
+
+**Article Library Tab (📚):**
+- Grid view of all generated articles with hero images
+- Search by title
+- Filter by status (published, draft, local, failed)
+- Filter by mode (WordPress, local)
+- Sort (newest, oldest, by title)
+- Pagination (12 articles per page)
+- Click to view full article in new window
+- Direct link to WordPress post (if published)
+
+**Image Library Tab (🖼️):**
+- Grid view of all generated images
+- **Full-text search on prompts** (e.g., "sunset photography")
+- Filter by type (hero, section)
+- Sort (newest, oldest)
+- Pagination (24 images per page)
+- Click image for modal with:
+  - Full prompt text
+  - Image metadata (model, aspect ratio, cost)
+  - Download button
+  - Creation date
+
+**API Implementation:**
+```javascript
+// Fetch articles with filters
+GET /api/users/{user_id}/articles?search=keyword&status=published&limit=12&offset=0
+
+// Get full article
+GET /api/users/{user_id}/articles/{article_id}  // Returns HTML + all metadata
+
+// Search images by prompt
+GET /api/users/{user_id}/images?search=photography&type=hero&limit=24
+
+// Get image details
+GET /api/users/{user_id}/images/{image_id}  // Returns full prompt + metadata
+```
+
+**Storage & Costs:**
+- Articles: ~100 KB each (HTML + metadata)
+- Images: Stored as URLs (not base64), ~0 additional storage
+- Cost: ~$0.025/article/month = 6% of generation cost ($0.54)
+- Negligible impact on infrastructure costs
+
+**Benefits:**
+- ✅ Complete content history
+- ✅ Reuse generated images across articles
+- ✅ Search prompts for inspiration
+- ✅ Track article performance
+- ✅ Foundation for Postiz social media integration
+- ✅ Portfolio of generated content
+- ✅ Recover from WordPress failures
+
+**Future Enhancements:**
+- Edit article HTML in dashboard
+- Regenerate specific images
+- Share articles via public link
+- Export to PDF/DOCX
+- Image editing tools
+- Analytics dashboard
+
+**Deployment:**
+See `ARTICLE_LIBRARY_DEPLOYMENT.md` for Ubuntu server setup instructions.
 
 ### Pre-Flight WordPress Check & Local Mode (NEW - 2025-10-12)
 
