@@ -68,16 +68,75 @@ def create_blog_post(user_id):
 
             logger.info(f"[V3 Scheduler] Article created. Images: {len([img for img in processed_post['all_images'] if img])}")
 
-            post = create_wordpress_post(title, blog_post_content, user_id, image_url)
-            if not post:
-                logger.error(f"Failed to create WordPress post for user {user_id}")
-                return None, "Failed to create WordPress post"
+            # Scheduled posts ALWAYS use WordPress mode (never local mode)
+            # Handle WordPress upload with failure protection
+            wordpress_url = user.wordpress_rest_api_url.rstrip('/') if user.wordpress_rest_api_url else None
+            if wordpress_url:
+                if wordpress_url.endswith('/wp-json/wp/v2'):
+                    wordpress_url = wordpress_url[:-len('/wp-json/wp/v2')]
+                elif wordpress_url.endswith('/wp-json'):
+                    wordpress_url = wordpress_url[:-len('/wp-json')]
 
-            wordpress_url = user.wordpress_rest_api_url.rstrip('/')
-            if wordpress_url.endswith('/wp-json/wp/v2'):
-                wordpress_url = wordpress_url[:-len('/wp-json/wp/v2')]
-            elif wordpress_url.endswith('/wp-json'):
-                wordpress_url = wordpress_url[:-len('/wp-json')]
+            try:
+                post = create_wordpress_post(title, blog_post_content, user_id, image_url)
+
+                if not post:
+                    # WordPress upload failed - send failure email with article
+                    logger.error(f"[Scheduler] WordPress post creation failed for user {user_id}")
+
+                    from email_notification import send_wordpress_failure_notification
+                    error_details = {
+                        "error_message": "Scheduled post: WordPress upload failed - check credentials",
+                        "failure_point": "article_creation",
+                        "technical_details": "create_wordpress_post() returned None for scheduled post.\n"
+                                           "This affects automated scheduling. Fix credentials urgently.",
+                        "resolution_steps": [
+                            "URGENT: This was a SCHEDULED post - fix credentials to prevent future failures",
+                            "Log into WordPress dashboard to verify credentials",
+                            "Go to Users → Profile → Application Passwords",
+                            "Generate new Application Password if needed",
+                            "Update credentials in dashboard settings",
+                            "Manual upload: Open attached HTML and paste into WordPress"
+                        ]
+                    }
+
+                    send_wordpress_failure_notification(
+                        title=title,
+                        article_html=blog_post_content,
+                        user_email=user.email,
+                        error_details=error_details,
+                        wordpress_url=wordpress_url
+                    )
+
+                    return None, "Failed to create WordPress post (scheduled) - article emailed"
+
+            except Exception as e:
+                # WordPress upload exception - send failure email
+                logger.error(f"[Scheduler] WordPress upload exception for user {user_id}: {str(e)}")
+
+                from email_notification import send_wordpress_failure_notification
+                error_details = {
+                    "error_message": f"Scheduled post: WordPress error: {str(e)[:200]}",
+                    "failure_point": "wordpress_upload",
+                    "technical_details": f"Exception during scheduled post:\n{str(e)}\n\nType: {type(e).__name__}",
+                    "resolution_steps": [
+                        "URGENT: This was a SCHEDULED post - fix credentials to prevent future failures",
+                        "Check WordPress credentials in dashboard",
+                        "Verify WordPress site is accessible",
+                        "Check WordPress error logs",
+                        "Manual upload: Open attached HTML and paste into WordPress"
+                    ]
+                }
+
+                send_wordpress_failure_notification(
+                    title=title,
+                    article_html=blog_post_content,
+                    user_email=user.email,
+                    error_details=error_details,
+                    wordpress_url=wordpress_url
+                )
+
+                return None, f"WordPress upload failed (scheduled): {str(e)} - article emailed"
 
             # Send email notification with HTML attachment
             from email_notification import send_article_notification_with_attachment

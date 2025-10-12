@@ -15,9 +15,15 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 # 2FA Configuration using SendGrid
-SENDGRID_API_KEY = os.getenv('EMAIL_PASSWORD')  # SendGrid API key from .env
-SMTP_FROM_EMAIL = os.getenv('SMTP_FROM_EMAIL', 'joe@ezwai.com')
-SMTP_FROM_NAME = os.getenv('SMTP_FROM_NAME', 'EZWAI SMM Security')
+# Try EMAIL_PASSWORD first (used by email_notification), fallback to SENDGRID_API_KEY
+SENDGRID_API_KEY = os.getenv('EMAIL_PASSWORD') or os.getenv('SENDGRID_API_KEY')
+SMTP_FROM_EMAIL = os.getenv('SMTP_FROM_EMAIL', 'support@mycontentgenerator.com')
+SMTP_FROM_NAME = os.getenv('SMTP_FROM_NAME', 'My Content Generator Security')
+
+# Debug logging
+logger.info(f"SendGrid API Key configured: {bool(SENDGRID_API_KEY)}")
+if not SENDGRID_API_KEY:
+    logger.error("CRITICAL: SendGrid API key not found in environment variables!")
 
 TWO_FACTOR_CODE_LENGTH = int(os.getenv('TWO_FACTOR_CODE_LENGTH', 6))
 TWO_FACTOR_CODE_EXPIRE_MINUTES = int(os.getenv('TWO_FACTOR_CODE_EXPIRE_MINUTES', 10))
@@ -47,7 +53,13 @@ def send_verification_email(email, verification_code, first_name=''):
         bool: True if email sent successfully, False otherwise
     """
     try:
-        # HTML email template with EZWAI branding
+        # Verify SendGrid API key is configured
+        if not SENDGRID_API_KEY:
+            logger.error("Cannot send email: SendGrid API key not configured")
+            return False
+
+        logger.info(f"Attempting to send verification email to {email} with code {verification_code}")
+        # HTML email template with My Content Generator branding
         html = f"""
         <!DOCTYPE html>
         <html>
@@ -68,7 +80,7 @@ def send_verification_email(email, verification_code, first_name=''):
                     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
                 }}
                 .header {{
-                    background: linear-gradient(135deg, #08b0c4 0%, #06899a 100%);
+                    background: linear-gradient(135deg, #6B5DD3 0%, #4A9FE8 100%);
                     padding: 30px;
                     text-align: center;
                     color: white;
@@ -87,7 +99,8 @@ def send_verification_email(email, verification_code, first_name=''):
                     color: #333;
                 }}
                 .code-box {{
-                    background: linear-gradient(135deg, #08b0c4 0%, #06899a 100%);
+                    background-color: #6B5DD3;
+                    background: linear-gradient(135deg, #6B5DD3 0%, #4A9FE8 100%);
                     border-radius: 12px;
                     padding: 25px;
                     text-align: center;
@@ -97,18 +110,20 @@ def send_verification_email(email, verification_code, first_name=''):
                     font-size: 36px;
                     font-weight: bold;
                     letter-spacing: 10px;
-                    color: white;
+                    color: #000000 !important;
+                    background-color: transparent;
                     font-family: 'Courier New', monospace;
+                    display: inline-block;
                 }}
                 .warning {{
                     background: #fff3cd;
-                    border-left: 5px solid #ff6b11;
+                    border-left: 5px solid #FF6B4A;
                     padding: 15px;
                     margin: 20px 0;
                     border-radius: 8px;
                 }}
                 .warning strong {{
-                    color: #ff6b11;
+                    color: #FF6B4A;
                 }}
                 .footer {{
                     background-color: #f8f9fa;
@@ -116,13 +131,13 @@ def send_verification_email(email, verification_code, first_name=''):
                     text-align: center;
                     color: #666;
                     font-size: 14px;
-                    border-top: 5px solid #08b0c4;
+                    border-top: 5px solid #6B5DD3;
                 }}
                 .footer p {{
                     margin: 5px 0;
                 }}
                 .brand-highlight {{
-                    color: #08b0c4;
+                    color: #6B5DD3;
                     font-weight: 600;
                 }}
             </style>
@@ -130,19 +145,19 @@ def send_verification_email(email, verification_code, first_name=''):
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>🚀 EZWAI SMM</h1>
+                    <h1>🚀 My Content Generator</h1>
                     <p>Verify Your Email Address</p>
                 </div>
                 <div class="content">
                     <p class="greeting">Hi{' ' + first_name if first_name else ''},</p>
 
-                    <p>Welcome to <span class="brand-highlight">EZWAI SMM</span>! To complete your registration, please verify your email address using the code below:</p>
+                    <p>Welcome to <span class="brand-highlight">My Content Generator</span>! To complete your registration, please verify your email address using the code below:</p>
 
                     <div class="code-box">
                         <div class="code">{verification_code}</div>
                     </div>
 
-                    <p>Enter this code on the verification page to activate your account and start creating amazing AI-powered content.</p>
+                    <p>Enter this code on the verification page to activate your account and start creating amazing AI-powered blog content.</p>
 
                     <div class="warning">
                         <strong>⚠️ Security Notice:</strong><br>
@@ -151,11 +166,11 @@ def send_verification_email(email, verification_code, first_name=''):
                         • If you didn't request this code, please ignore this email
                     </div>
 
-                    <p>Need help? Contact our support team at joe@ezwai.com</p>
+                    <p>Need help? Contact our support team at support@mycontentgenerator.com</p>
                 </div>
                 <div class="footer">
-                    <p><strong>EZWAI SMM</strong> - AI-Powered Content Automation</p>
-                    <p style="color: #08b0c4;">Automated Social Media Management Made Simple</p>
+                    <p><strong>My Content Generator</strong> - AI-Powered Blog Content for WordPress</p>
+                    <p style="color: #6B5DD3;">Professional Content Creation Made Simple</p>
                     <p style="font-size: 12px; margin-top: 10px;">This is an automated message, please do not reply to this email.</p>
                 </div>
             </div>
@@ -168,18 +183,23 @@ def send_verification_email(email, verification_code, first_name=''):
 
         from_email = Email(SMTP_FROM_EMAIL, SMTP_FROM_NAME)
         to_email = To(email)
-        subject = 'Verify Your EZWAI SMM Account'
+        subject = 'Verify Your My Content Generator Account'
         html_content = Content("text/html", html)
 
         mail = Mail(from_email, to_email, subject, html_content)
 
         response = sg.send(mail)
 
-        logger.info(f"Verification email sent successfully to {email}. Status code: {response.status_code}")
+        logger.info(f"✅ Verification email sent successfully to {email}. Status code: {response.status_code}")
+        logger.debug(f"SendGrid response body: {response.body}")
+        logger.debug(f"SendGrid response headers: {response.headers}")
         return True
 
     except Exception as e:
-        logger.error(f"Failed to send verification email to {email}: {str(e)}")
+        logger.error(f"❌ Failed to send verification email to {email}: {str(e)}")
+        logger.error(f"Error type: {type(e).__name__}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
         return False
 
 

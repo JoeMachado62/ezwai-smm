@@ -514,6 +514,320 @@ def send_article_notification_with_attachment(
         return False
 
 
+def send_wordpress_failure_notification(
+    title,
+    article_html,
+    user_email,
+    error_details,
+    wordpress_url=None
+):
+    """
+    Send email when WordPress upload fails, with article HTML attachment.
+
+    Provides specific error details and manual upload instructions.
+    User receives complete article to prevent work loss.
+
+    Args:
+        title: Article title
+        article_html: Complete HTML with embedded images
+        user_email: Recipient email
+        error_details: Dict with error information:
+            {
+                "error_message": "Missing Application Password",
+                "failure_point": "hero_image_upload" | "article_creation" | "authentication",
+                "technical_details": "Full error traceback...",
+                "resolution_steps": ["Step 1", "Step 2", ...]
+            }
+        wordpress_url: WordPress site URL for reference
+
+    Returns:
+        bool: True if sent successfully, False otherwise
+    """
+    try:
+        sg = SendGridAPIClient(api_key=os.environ.get('EMAIL_PASSWORD'))
+
+        from_email = Email("joe@ezwai.com")
+        to_email = To(user_email)
+        subject = f"⚠️ Article Ready - Manual Upload Required: {title}"
+
+        # Parse error details
+        error_msg = error_details.get("error_message", "Unknown error")
+        failure_point = error_details.get("failure_point", "wordpress_upload")
+        technical_info = error_details.get("technical_details", "No additional details")
+        resolution_steps = error_details.get("resolution_steps", [
+            "Check WordPress Application Password is configured correctly",
+            "Verify WordPress REST API is accessible",
+            "Ensure WordPress site URL is correct in dashboard",
+            "Try logging into WordPress manually to confirm credentials"
+        ])
+
+        # Build resolution steps HTML
+        resolution_html = "".join([f"<li>{step}</li>" for step in resolution_steps])
+
+        email_body = f"""
+        <html>
+        <head>
+            <style>
+                body {{
+                    font-family: 'Arial', sans-serif;
+                    background-color: #f0f2f5;
+                    margin: 0;
+                    padding: 0;
+                }}
+                .container {{
+                    max-width: 650px;
+                    margin: 30px auto;
+                    background-color: #ffffff;
+                    border-radius: 20px;
+                    overflow: hidden;
+                    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+                }}
+                .header {{
+                    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+                    padding: 35px;
+                    text-align: center;
+                    color: white;
+                }}
+                .header h1 {{
+                    margin: 0;
+                    font-size: 30px;
+                    font-weight: 700;
+                }}
+                .header p {{
+                    margin: 12px 0 0 0;
+                    font-size: 17px;
+                    opacity: 0.95;
+                }}
+                .status-badge {{
+                    display: inline-block;
+                    background: rgba(255, 255, 255, 0.3);
+                    padding: 8px 20px;
+                    border-radius: 20px;
+                    margin-top: 10px;
+                    font-size: 14px;
+                    font-weight: 600;
+                }}
+                .content {{
+                    padding: 35px;
+                    color: #3a3a3a;
+                }}
+                .content h2 {{
+                    color: #f59e0b;
+                    font-size: 22px;
+                    margin-top: 0;
+                    margin-bottom: 15px;
+                }}
+                .content p {{
+                    line-height: 1.7;
+                    color: #666;
+                    font-size: 15px;
+                }}
+                .success-box {{
+                    background: #f0fdf4;
+                    border-left: 5px solid #22c55e;
+                    padding: 20px;
+                    margin: 20px 0;
+                    border-radius: 8px;
+                }}
+                .success-item {{
+                    padding: 5px 0;
+                    color: #16a34a;
+                    font-weight: 500;
+                }}
+                .success-item:before {{
+                    content: "✓ ";
+                    font-weight: bold;
+                    margin-right: 8px;
+                }}
+                .error-box {{
+                    background: #fef2f2;
+                    border-left: 5px solid #ef4444;
+                    padding: 20px;
+                    margin: 20px 0;
+                    border-radius: 8px;
+                }}
+                .error-box h3 {{
+                    color: #dc2626;
+                    margin-top: 0;
+                    font-size: 18px;
+                }}
+                .error-item {{
+                    padding: 5px 0;
+                    color: #dc2626;
+                    font-weight: 500;
+                }}
+                .error-item:before {{
+                    content: "✗ ";
+                    font-weight: bold;
+                    margin-right: 8px;
+                }}
+                .resolution-box {{
+                    background: #eff6ff;
+                    border-left: 5px solid #3b82f6;
+                    padding: 20px;
+                    margin: 20px 0;
+                    border-radius: 8px;
+                }}
+                .resolution-box h3 {{
+                    color: #2563eb;
+                    margin-top: 0;
+                    font-size: 18px;
+                }}
+                .resolution-box ul {{
+                    margin: 10px 0;
+                    padding-left: 25px;
+                }}
+                .resolution-box li {{
+                    padding: 5px 0;
+                    color: #1e40af;
+                    line-height: 1.6;
+                }}
+                .attachment-box {{
+                    background: #fefce8;
+                    border-left: 5px solid #eab308;
+                    padding: 20px;
+                    margin: 20px 0;
+                    border-radius: 8px;
+                }}
+                .attachment-box h3 {{
+                    color: #ca8a04;
+                    margin-top: 0;
+                    font-size: 18px;
+                }}
+                .technical-details {{
+                    background: #f9fafb;
+                    border: 1px solid #e5e7eb;
+                    padding: 15px;
+                    margin: 15px 0;
+                    border-radius: 6px;
+                    font-family: 'Courier New', monospace;
+                    font-size: 12px;
+                    color: #6b7280;
+                    max-height: 150px;
+                    overflow-y: auto;
+                }}
+                .footer {{
+                    background-color: #f8f9fa;
+                    padding: 25px;
+                    text-align: center;
+                    color: #666;
+                    font-size: 14px;
+                    border-top: 5px solid #f59e0b;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>⚠️ My Content Generator</h1>
+                    <p>Article Generated - Manual Upload Required</p>
+                    <div class="status-badge">📄 Article Ready | WordPress Upload Failed</div>
+                </div>
+
+                <div class="content">
+                    <h2>{title}</h2>
+
+                    <p><strong>Good news:</strong> Your article was successfully generated! However, we encountered an issue uploading it to WordPress.</p>
+
+                    <div class="success-box">
+                        <h3>✅ Successfully Completed</h3>
+                        <div class="success-item">Article content generated (1500-2500 words)</div>
+                        <div class="success-item">4 photorealistic 2K images created</div>
+                        <div class="success-item">Premium magazine layout formatted</div>
+                        <div class="success-item">HTML file with embedded images attached</div>
+                    </div>
+
+                    <div class="error-box">
+                        <h3>❌ WordPress Upload Failed</h3>
+                        <div class="error-item">Failed at: {failure_point.replace('_', ' ').title()}</div>
+                        <div class="error-item">Error: {error_msg}</div>
+                    </div>
+
+                    <div class="resolution-box">
+                        <h3>🔧 How to Resolve</h3>
+                        <p><strong>Recommended steps:</strong></p>
+                        <ul>
+                            {resolution_html}
+                        </ul>
+                        <p style="margin-top: 15px;">
+                            Once you've fixed the issue, you can create a new post in WordPress and copy the content from the attached HTML file.
+                        </p>
+                    </div>
+
+                    <div class="attachment-box">
+                        <h3>📎 Your Article is Attached</h3>
+                        <p><strong>What you can do now:</strong></p>
+                        <ul style="margin: 10px 0; padding-left: 25px;">
+                            <li><strong>Manual WordPress Upload:</strong> Open the HTML file, copy all content (Ctrl+A, Ctrl+C), and paste into a new WordPress post</li>
+                            <li><strong>Share Directly:</strong> Forward this email or share the HTML file with your team</li>
+                            <li><strong>Social Media:</strong> Copy content from the HTML file to LinkedIn, Facebook, or other platforms</li>
+                            <li><strong>Save for Later:</strong> Keep the HTML file for future use - all images are embedded</li>
+                        </ul>
+                        <p style="margin-top: 15px; font-size: 13px; color: #92400e;">
+                            💡 <strong>Pro Tip:</strong> The attached HTML file is completely self-contained with all images embedded.
+                            You can open it in any browser, even without an internet connection!
+                        </p>
+                    </div>
+
+                    <details style="margin-top: 20px;">
+                        <summary style="cursor: pointer; color: #6b7280; font-size: 13px;">
+                            🔍 Technical Details (for troubleshooting)
+                        </summary>
+                        <div class="technical-details">
+{technical_info}
+                        </div>
+                    </details>
+
+                    {f'<p style="margin-top: 30px; padding: 15px; background: #f3f4f6; border-radius: 8px; font-size: 14px;"><strong>WordPress Site:</strong> {wordpress_url}</p>' if wordpress_url else ''}
+
+                    <p style="margin-top: 30px; text-align: center; color: #6b7280; font-size: 14px;">
+                        Need help? Contact support with this error reference.
+                    </p>
+                </div>
+
+                <div class="footer">
+                    <p><strong>My Content Generator</strong> - AI-Powered Content Creation</p>
+                    <p style="color: #f59e0b;">✨ Generated with GPT-5 + Claude AI + SeeDream-4</p>
+                    <p style="font-size: 12px; margin-top: 15px; color: #999;">
+                        Your article content is safe. We've attached the complete HTML file for manual upload.
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        content = Content("text/html", email_body)
+        mail = Mail(from_email, to_email, subject, content)
+
+        # Attach the full article HTML
+        safe_filename = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).strip()
+        safe_filename = safe_filename[:50]
+        safe_filename = f"{safe_filename}.html" if safe_filename else "article.html"
+
+        article_bytes = article_html.encode('utf-8')
+        article_base64 = base64.b64encode(article_bytes).decode('utf-8')
+
+        attachment = Attachment()
+        attachment.file_content = article_base64
+        attachment.file_name = safe_filename
+        attachment.file_type = "text/html"
+        attachment.disposition = "attachment"
+
+        mail.attachment = attachment
+
+        # Send email
+        response = sg.send(mail)
+        logger.info(f"WordPress failure notification sent to {user_email}. Status: {response.status_code}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to send WordPress failure email: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return False
+
+
 # Add some debug logging to check environment variables
 logger.debug(f"EMAIL_HOST: {os.environ.get('EMAIL_HOST')}")
 logger.debug(f"EMAIL_PORT: {os.environ.get('EMAIL_PORT')}")

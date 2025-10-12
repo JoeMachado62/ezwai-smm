@@ -445,10 +445,10 @@ def get_transaction_history(user_id: int, limit: int = 50) -> list:
         return [{
             'id': t.id,
             'amount': t.amount,
-            'type': t.transaction_type,
+            'transaction_type': t.transaction_type,  # Fixed: was 'type', should be 'transaction_type'
             'description': t.description,
             'balance_after': t.balance_after,
-            'date': t.created_at.isoformat(),
+            'created_at': t.created_at.isoformat(),  # Fixed: was 'date', should be 'created_at'
             'stripe_payment_intent_id': t.stripe_payment_intent_id
         } for t in transactions]
     except Exception as e:
