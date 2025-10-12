@@ -52,7 +52,7 @@ Both V3 and V4 provide:
 5. **Magazine Formatting** - Two options:
    - `claude_formatter.py` (NEW: AI-powered layout)
    - `magazine_formatter.py` (Legacy: template-based)
-6. **Publishing** (`wordpress_integration.py`) - Posts to WordPress via REST API with JWT auth
+6. **Publishing** (`wordpress_integration.py`) - Posts to WordPress via REST API with Application Passwords
 7. **Notification** (`email_notification.py`) - SendGrid email notifications
 
 ### Key Files
@@ -74,7 +74,7 @@ Both V3 and V4 provide:
 **Shared Modules:**
 - `config.py` - Database configuration
 - `perplexity_ai_integration.py` - Topic research with Perplexity AI
-- `wordpress_integration.py` - WordPress REST API with JWT auth
+- `wordpress_integration.py` - WordPress REST API with Application Passwords
 - `email_notification.py` - SendGrid email notifications
 
 **Startup Scripts (Windows):**
@@ -410,6 +410,119 @@ processed_post, error = create_blog_post_with_images_v4(
 
 ## Important Implementation Details
 
+### Pre-Flight WordPress Check & Local Mode (NEW - 2025-10-12)
+
+**Problem Solved:** WordPress configuration is now OPTIONAL - users can create articles without WordPress.
+
+**How It Works (Decision Logic):**
+```
+1. User clicks "Generate Article"
+2. System checks: Is WordPress configured?
+   - YES → Check if user selected "local mode" checkbox
+     - YES → Use local mode
+     - NO → Use WordPress mode
+   - NO → Automatically use local mode (no error!)
+3. For scheduled posts → ALWAYS use WordPress mode
+```
+
+**Local Mode Features:**
+- ✅ Self-contained HTML file with base64-embedded images (~8-10 MB)
+- ✅ No WordPress required
+- ✅ Email sent with downloadable article attachment
+- ✅ Perfect for: testing, portfolio, non-WordPress users
+- ✅ Same quality as WordPress mode (GPT-5 + Claude + SeeDream-4)
+
+**Key Functions:**
+```python
+# Check if WordPress configured
+def has_wordpress_configured(user):
+    return bool(
+        user.wordpress_rest_api_url and
+        user.wordpress_app_password and
+        user.wordpress_username
+    )
+
+# Pre-flight check in /api/create_test_post
+wordpress_configured = has_wordpress_configured(current_user)
+user_chose_local_mode = request.json.get('local_mode', False)
+
+if user_chose_local_mode or not wordpress_configured:
+    local_mode = True  # Use local mode
+else:
+    local_mode = False  # Use WordPress mode
+
+# Pass to V4 pipeline
+result = create_blog_post_with_images_v4(
+    ...,
+    local_mode=local_mode,  # Enables base64 image embedding
+    is_scheduled=False  # Manual post (scheduled always = False for local mode)
+)
+```
+
+**UI Component:**
+```html
+<!-- Dashboard checkbox (dashboard.html line ~1021) -->
+<input type="checkbox" id="localModeCheckbox">
+<label>📥 Create downloadable article (no WordPress required)</label>
+<p>Note: If WordPress is not configured, this mode will be used automatically.</p>
+```
+
+**Important:** Scheduled posts (scheduler_v3.py) ALWAYS use WordPress mode and NEVER local mode.
+
+### WordPress Failure Protection (NEW - 2025-10-11)
+
+**Problem Solved:** If WordPress upload fails (UNEXPECTED errors), article is no longer lost.
+
+**When This Applies:**
+- WordPress IS configured
+- User did NOT choose local mode
+- WordPress upload FAILS unexpectedly
+
+**How It Works:**
+1. Article generation completes successfully (GPT-5 + images + formatting)
+2. WordPress upload fails (auth error, API error, etc.)
+3. System catches error and categorizes it:
+   - Authentication failures (Application Password issues)
+   - Image upload failures (media library issues)
+   - REST API failures (endpoint not accessible)
+   - General failures (other WordPress issues)
+4. Email sent to user with:
+   - ✅ What succeeded (article, images, formatting)
+   - ❌ What failed (specific error details)
+   - 🔧 How to resolve (step-by-step instructions)
+   - 📎 Complete HTML file attached (all images embedded as base64)
+
+**User Options After Failure:**
+- Fix WordPress credentials and manually create post (copy/paste from HTML)
+- Use HTML file for social media (LinkedIn, Facebook, etc.)
+- Forward HTML to team members
+- Save HTML for later use (self-contained, works offline)
+
+**Email Function:**
+```python
+from email_notification import send_wordpress_failure_notification
+
+send_wordpress_failure_notification(
+    title="Article Title",
+    article_html=complete_html_with_images,
+    user_email=user.email,
+    error_details={
+        "error_message": "WordPress authentication failed",
+        "failure_point": "authentication",
+        "technical_details": full_traceback,
+        "resolution_steps": ["Check Application Password", "..."]
+    },
+    wordpress_url="https://yoursite.com"
+)
+```
+
+**Implementation Details:**
+- No 30-day backup retention (article emailed immediately)
+- No auto-retry loops (user manually uploads)
+- No complex dashboard retry UI (keep it simple)
+- HTML attachment size: ~8-10 MB (well within SendGrid 30 MB limit)
+- See `ARTICLE_BACKUP_SIMPLE_IMPLEMENTATION.md` for full details
+
 ### Claude Formatter Usage
 
 **When to Use:**
@@ -494,7 +607,12 @@ processed_post = {
 - Critical for cron jobs that may run frequently
 
 ### WordPress Integration
-- JWT authentication required (JWT Authentication for WP REST API plugin)
+- **Authentication Method**: Application Passwords (WordPress 5.6+)
+- **No Plugin Required**: Built-in WordPress feature
+- **User Setup**:
+  1. Enter WordPress site URL (e.g., https://example.com)
+  2. Create Application Password in WordPress admin
+  3. Paste password into settings
 - Images uploaded to WordPress media library before post creation
 - Posts created as "draft" status for user review
 - Email notification sent after successful post creation
@@ -511,7 +629,7 @@ processed_post = {
 - Replicate API (system-wide in .env)
 - SendGrid API (system-wide in .env)
 - **Anthropic API (system-wide or per-user)** - NEW
-- WordPress with JWT plugin (per-user)
+- WordPress Application Password (per-user, built-in WordPress 5.6+)
 
 ## Recommended Refactoring
 

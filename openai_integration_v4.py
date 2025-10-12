@@ -25,7 +25,7 @@ from claude_formatter import format_article_with_claude
 from magazine_formatter import apply_magazine_styling  # Fallback formatter
 
 # Import shared utilities
-from wordpress_integration import load_user_env as wp_load_user_env, download_image, get_jwt_token
+from wordpress_integration import download_image, upload_image_to_wordpress
 
 logger = logging.getLogger(__name__)
 
@@ -82,8 +82,12 @@ def _save_raw_article(article_data: Dict, user_id: int, stage: str) -> None:
         stage: Pipeline stage (e.g., "after_step1", "after_formatting")
     """
     try:
+        # Create backups directory structure
+        backup_dir = "backups"
+        os.makedirs(backup_dir, exist_ok=True)
+
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"article_backup_user{user_id}_{stage}_{timestamp}.html"
+        filename = os.path.join(backup_dir, f"article_backup_user{user_id}_{stage}_{timestamp}.html")
 
         title = article_data.get("title", "Untitled")
         html_content = article_data.get("html", "<p>No content</p>")
@@ -140,8 +144,12 @@ def _save_formatted_article(final_html: str, title: str, user_id: int, hero_url:
         section_urls: List of section image URLs
     """
     try:
+        # Create backups directory structure
+        backup_dir = "backups"
+        os.makedirs(backup_dir, exist_ok=True)
+
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"article_backup_user{user_id}_formatted_{timestamp}.html"
+        filename = os.path.join(backup_dir, f"article_backup_user{user_id}_formatted_{timestamp}.html")
 
         metadata_banner = f"""
 <!--
@@ -189,26 +197,18 @@ def _wp_base_url() -> str:
 
 
 def _upload_media_to_wordpress(image_path: str, user_id: int):
-    """Upload image to WordPress media library and return full response."""
-    import requests
-
-    wp_load_user_env(user_id)
-    token = get_jwt_token(user_id)
-    if not token:
-        logger.error("WP upload: missing JWT token")
-        return None
-
-    url = f"{_wp_base_url()}/wp-json/wp/v2/media"
-    headers = {"Authorization": f"Bearer {token}"}
-
+    """Upload image to WordPress media library using Application Password authentication."""
     try:
-        with open(image_path, "rb") as fh:
-            files = {"file": fh}
-            resp = requests.post(url, headers=headers, files=files, timeout=60)
-        resp.raise_for_status()
-        data = resp.json()
-        logger.info(f"WP upload: media id={data.get('id')}")
-        return data
+        # Use the new upload_image_to_wordpress function with Application Password
+        media_data = upload_image_to_wordpress(image_path, user_id)
+
+        if media_data:
+            logger.info(f"WP upload: media id={media_data.get('id')}")
+            return media_data
+        else:
+            logger.error("WP upload: upload_image_to_wordpress returned None")
+            return None
+
     except Exception as e:
         logger.error(f"WP upload error: {e}")
         return None
@@ -359,7 +359,6 @@ def persist_image_to_wordpress(tmp_url: Optional[str], user_id: int) -> Optional
 
     tmp_path = None
     try:
-        wp_load_user_env(user_id)
         ts = int(time.time() * 1000)
         tmp_path = os.path.join(tempfile.gettempdir(), f"ai_img_{user_id}_{ts}.jpg")
 
@@ -378,6 +377,119 @@ def persist_image_to_wordpress(tmp_url: Optional[str], user_id: int) -> Optional
                 os.remove(tmp_path)
             except Exception:
                 pass
+
+
+def _save_article_to_database(
+    user_id: int,
+    title: str,
+    content_html: str,
+    hero_image_url: str,
+    section_images: List[str],
+    generation_mode: str,
+    wordpress_post_id: Optional[int] = None,
+    wordpress_url: Optional[str] = None,
+    backup_file_path: Optional[str] = None,
+    metadata: Optional[Dict] = None
+) -> Optional[int]:
+    """
+    Save article to database.
+
+    Returns:
+        article_id if successful, None if failed
+    """
+    try:
+        from app_v3 import db, Article
+
+        # Count words in HTML (strip tags)
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(content_html, 'html.parser')
+        text = soup.get_text()
+        word_count = len(text.split())
+
+        # Determine status
+        if generation_mode == 'local':
+            status = 'local'
+        elif wordpress_post_id:
+            status = 'published'
+        else:
+            status = 'draft'
+
+        # Create article record
+        article = Article(
+            user_id=user_id,
+            title=title,
+            content_html=content_html,
+            hero_image_url=hero_image_url,
+            section_images=section_images,  # JSON list of URLs
+            word_count=word_count,
+            status=status,
+            generation_mode=generation_mode,
+            wordpress_post_id=wordpress_post_id,
+            wordpress_url=wordpress_url,
+            metadata=metadata or {},
+            backup_file_path=backup_file_path
+        )
+
+        db.session.add(article)
+        db.session.commit()
+
+        logger.info(f"[DB] ✓ Saved article ID {article.id}: {title[:60]}...")
+        return article.id
+
+    except Exception as e:
+        logger.error(f"[DB] Failed to save article: {e}")
+        return None
+
+
+def _save_images_to_database(
+    user_id: int,
+    article_id: Optional[int],
+    image_data: List[Dict[str, Any]]
+) -> bool:
+    """
+    Save generated images to database.
+
+    image_data format:
+    [
+        {
+            "url": "https://...",
+            "type": "hero",  # or "section"
+            "prompt": "...",
+            "model": "seedream-4",
+            "aspect_ratio": "16:9",
+            "prediction_id": "...",
+            "cost_usd": 0.075
+        }
+    ]
+
+    Returns:
+        True if successful, False if failed
+    """
+    try:
+        from app_v3 import db, Image
+
+        for img in image_data:
+            image = Image(
+                user_id=user_id,
+                article_id=article_id,
+                image_url=img.get('url'),
+                image_type=img.get('type', 'section'),
+                prompt=img.get('prompt', ''),
+                model=img.get('model', 'seedream-4'),
+                aspect_ratio=img.get('aspect_ratio'),
+                replicate_prediction_id=img.get('prediction_id'),
+                cost_usd=img.get('cost_usd', 0.075),
+                tags=img.get('tags', [])
+            )
+            db.session.add(image)
+
+        db.session.commit()
+        logger.info(f"[DB] ✓ Saved {len(image_data)} images for article {article_id}")
+        return True
+
+    except Exception as e:
+        logger.error(f"[DB] Failed to save images: {e}")
+        return False
 
 
 def create_blog_post_with_images_v4(
@@ -662,6 +774,59 @@ def create_blog_post_with_images_v4(
         logger.info(f"[V4 Pipeline] ✅ SUCCESS - Article: {title[:60]}...")
         logger.info(f"[V4 Pipeline] Magazine components: {len(components)}")
         logger.info("=" * 80)
+
+        # Save article and images to database
+        logger.info("\n[DB] Saving article and images to database...")
+
+        # Prepare image data for database
+        image_data = [
+            {
+                "url": hero_image_url,
+                "type": "hero",
+                "prompt": hero_prompt,
+                "model": "seedream-4",
+                "aspect_ratio": "16:9",
+                "cost_usd": 0.075
+            }
+        ]
+
+        # Add section images
+        for i, (url, prompt_obj) in enumerate(zip(section_image_urls, section_prompts)):
+            image_data.append({
+                "url": url,
+                "type": "section",
+                "prompt": prompt_obj["prompt"],
+                "model": "seedream-4",
+                "aspect_ratio": "21:9",
+                "cost_usd": 0.075
+            })
+
+        # Save article to database
+        article_id = _save_article_to_database(
+            user_id=user_id,
+            title=title,
+            content_html=final_html,
+            hero_image_url=hero_image_url,
+            section_images=section_image_urls,
+            generation_mode='local' if local_mode else 'wordpress',
+            wordpress_post_id=None,  # Will be updated by app_v3 if WordPress post created
+            wordpress_url=None,
+            backup_file_path=None,  # Will be updated if backup saved
+            metadata={
+                "writing_style": writing_style,
+                "component_count": len(components),
+                "word_count": len(perplexity_summary.split()) if perplexity_summary else 0
+            }
+        )
+
+        # Save images to database
+        if article_id:
+            _save_images_to_database(
+                user_id=user_id,
+                article_id=article_id,
+                image_data=image_data
+            )
+            result["article_id"] = article_id  # Add article_id to result
 
         return result, None
 

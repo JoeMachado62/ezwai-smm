@@ -97,8 +97,7 @@ class User(UserMixin, db.Model):  # type: ignore[misc,name-defined]
     billing_address = db.Column(db.String(200))  # type: ignore[var-annotated]
     openai_api_key = db.Column(db.String(255))  # type: ignore[var-annotated]
     wordpress_rest_api_url = db.Column(db.String(255))  # type: ignore[var-annotated]
-    wordpress_username = db.Column(db.String(80))  # type: ignore[var-annotated]
-    wordpress_password = db.Column(db.String(255))  # type: ignore[var-annotated]
+    wordpress_app_password = db.Column(db.String(255))  # type: ignore[var-annotated]  # WordPress Application Password
     perplexity_api_token = db.Column(db.String(255))  # type: ignore[var-annotated]
     queries = db.Column(db.JSON)  # type: ignore[var-annotated]
     system_prompt = db.Column(db.Text)  # type: ignore[var-annotated]
@@ -157,6 +156,42 @@ class CreditTransaction(db.Model):  # type: ignore[misc,name-defined]
     description = db.Column(db.String(500))  # type: ignore[var-annotated]
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # type: ignore[var-annotated]
 
+class Article(db.Model):  # type: ignore[misc,name-defined]
+    """Generated articles with metadata"""
+    __tablename__ = 'articles'
+    id = db.Column(db.Integer, primary_key=True)  # type: ignore[var-annotated]
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # type: ignore[var-annotated]
+    title = db.Column(db.String(500), nullable=False)  # type: ignore[var-annotated]
+    content_html = db.Column(db.Text, nullable=False)  # type: ignore[var-annotated]
+    hero_image_url = db.Column(db.String(1000))  # type: ignore[var-annotated]
+    section_images = db.Column(db.JSON)  # type: ignore[var-annotated] - List of section image URLs
+    word_count = db.Column(db.Integer)  # type: ignore[var-annotated]
+    status = db.Column(db.String(50), default='draft')  # type: ignore[var-annotated] - 'draft', 'published', 'scheduled', 'failed', 'local'
+    generation_mode = db.Column(db.String(50), default='wordpress')  # type: ignore[var-annotated] - 'wordpress', 'local'
+    wordpress_post_id = db.Column(db.Integer)  # type: ignore[var-annotated]
+    wordpress_url = db.Column(db.String(1000))  # type: ignore[var-annotated]
+    metadata = db.Column(db.JSON)  # type: ignore[var-annotated] - Additional metadata (topic, style, etc.)
+    backup_file_path = db.Column(db.String(500))  # type: ignore[var-annotated]
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # type: ignore[var-annotated]
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)  # type: ignore[var-annotated]
+
+class Image(db.Model):  # type: ignore[misc,name-defined]
+    """Generated images with prompts"""
+    __tablename__ = 'images'
+    id = db.Column(db.Integer, primary_key=True)  # type: ignore[var-annotated]
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # type: ignore[var-annotated]
+    article_id = db.Column(db.Integer, db.ForeignKey('articles.id'), nullable=True)  # type: ignore[var-annotated]
+    image_url = db.Column(db.String(1000), nullable=False)  # type: ignore[var-annotated]
+    image_type = db.Column(db.String(50), default='section')  # type: ignore[var-annotated] - 'hero', 'section'
+    prompt = db.Column(db.Text, nullable=False)  # type: ignore[var-annotated]
+    model = db.Column(db.String(100), default='seedream-4')  # type: ignore[var-annotated]
+    aspect_ratio = db.Column(db.String(20))  # type: ignore[var-annotated]
+    replicate_prediction_id = db.Column(db.String(100))  # type: ignore[var-annotated]
+    file_size_kb = db.Column(db.Integer)  # type: ignore[var-annotated]
+    cost_usd = db.Column(db.Float, default=0.0750)  # type: ignore[var-annotated]
+    tags = db.Column(db.JSON)  # type: ignore[var-annotated] - Optional tags for categorization
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # type: ignore[var-annotated]
+
 # Global error handler
 @app.errorhandler(Exception)
 def handle_exception(e):
@@ -190,10 +225,20 @@ def generate_env_file(user):
     OpenAI, Perplexity, and Replicate API keys are centralized in main .env file.
     This prevents user env files from overriding the admin's centralized keys.
     """
-    env_content = f"""# WordPress credentials (per-user)
-WORDPRESS_REST_API_URL="{user.wordpress_rest_api_url or ''}"
-WORDPRESS_USERNAME="{user.wordpress_username or ''}"
-WORDPRESS_PASSWORD="{user.wordpress_password or ''}"
+    from wordpress_integration import normalize_wordpress_url
+
+    # Normalize WordPress URL
+    wordpress_url = ''
+    if user.wordpress_rest_api_url:
+        wordpress_url = normalize_wordpress_url(user.wordpress_rest_api_url)
+
+    # Use email username as WordPress username
+    wordpress_username = user.email.split('@')[0] if user.email else ''
+
+    env_content = f"""# WordPress credentials (per-user) - Application Password Method
+WORDPRESS_REST_API_URL="{wordpress_url}"
+WORDPRESS_APP_PASSWORD="{user.wordpress_app_password or ''}"
+WORDPRESS_USERNAME="{wordpress_username}"
 
 # NOTE: OpenAI, Perplexity, and Replicate keys are centralized in main .env
 # Do NOT add them here - they will override the system keys!
@@ -245,18 +290,38 @@ def is_valid_perplexity_api_token(token):
     """Validate Perplexity API token format"""
     return bool(re.match(r'^pplx-[A-Za-z0-9]{32,}$', token))
 
-def create_blog_post_v3(user_id, manual_topic=None, manual_system_prompt=None, manual_writing_style=None):
+def has_wordpress_configured(user):
+    """
+    Check if user has WordPress credentials configured.
+
+    Returns:
+        bool: True if WordPress is configured, False otherwise
+    """
+    return bool(
+        user.wordpress_rest_api_url and
+        user.wordpress_rest_api_url.strip() and
+        user.wordpress_app_password and
+        user.wordpress_app_password.strip() and
+        user.wordpress_username and
+        user.wordpress_username.strip()
+    )
+
+def create_blog_post_v3(user_id, manual_topic=None, manual_system_prompt=None, manual_writing_style=None, local_mode=False, is_scheduled=False):
     """
     V3.0 / V4.0: State-of-the-art blog post creation with:
     - GPT-5 / GPT-5-mini with reasoning (medium effort)
     - SeeDream-4 2K photorealistic images
     - Enhanced photographic prompt engineering
     - Writing style support
+    - Optional local mode (downloadable HTML without WordPress)
 
     Args:
         user_id: User ID for post creation
         manual_topic: Optional manual topic (bypasses saved topics rotation)
         manual_system_prompt: Optional manual system prompt (overrides saved prompt)
+        manual_writing_style: Optional writing style for article generation
+        local_mode: If True, creates downloadable HTML with base64 images (no WordPress)
+        is_scheduled: If True, this is a scheduled post (not manual) - affects error handling
     """
     user = User.query.get(user_id)  # type: ignore[attr-defined]
     if not user:
@@ -292,15 +357,19 @@ def create_blog_post_v3(user_id, manual_topic=None, manual_system_prompt=None, m
         system_prompt = user.system_prompt or "Write a comprehensive, engaging article in a professional but conversational tone suitable for a business magazine."
         logger.info(f"[V3] Using saved system prompt")
 
+    # Determine mode
+    mode_label = "LOCAL MODE (downloadable)" if local_mode else "WORDPRESS MODE"
     logger.info(f"[V4] Creating magazine-style blog post with V4 modular pipeline...")
+    logger.info(f"[V4] Mode: {mode_label}")
     logger.info(f"Perplexity research: {blog_post_idea[:100]}...")
 
-    # Use V4 modular pipeline with writing style
+    # Use V4 modular pipeline with writing style and local_mode flag
     processed_post, error = create_blog_post_with_images_v4(
         perplexity_research=blog_post_idea,
         user_id=user_id,
         user_system_prompt=system_prompt,
-        writing_style=writing_style  # Pass writing style through to V4
+        writing_style=writing_style,  # Pass writing style through to V4
+        local_mode=local_mode  # Enable local mode if WordPress not configured or user chose it
     )
     if error:
         logger.error(f"Error in V4 pipeline for user {user_id}: {error}")
@@ -355,38 +424,187 @@ def create_blog_post_v3(user_id, manual_topic=None, manual_system_prompt=None, m
     logger.info(f"  - All 4 images embedded: ✓")
     logger.info(f"  - Content length: {len(blog_post_content)} characters")
 
-    # Create WordPress post with hero image
-    post = create_wordpress_post(title, blog_post_content, user_id, hero_image_url)
-    if not post:
-        logger.error(f"Failed to create WordPress post for user {user_id}")
-        return None, "Failed to create WordPress post"
+    # Normalize WordPress URL for emails
+    wordpress_url = user.wordpress_rest_api_url.rstrip('/') if user.wordpress_rest_api_url else None
+    if wordpress_url:
+        if wordpress_url.endswith('/wp-json/wp/v2'):
+            wordpress_url = wordpress_url[:-len('/wp-json/wp/v2')]
+        elif wordpress_url.endswith('/wp-json'):
+            wordpress_url = wordpress_url[:-len('/wp-json')]
 
-    # Normalize WordPress URL
-    wordpress_url = user.wordpress_rest_api_url.rstrip('/')
-    if wordpress_url.endswith('/wp-json/wp/v2'):
-        wordpress_url = wordpress_url[:-len('/wp-json/wp/v2')]
-    elif wordpress_url.endswith('/wp-json'):
-        wordpress_url = wordpress_url[:-len('/wp-json')]
+    # LOCAL MODE: Skip WordPress upload, send email with downloadable article
+    if local_mode:
+        logger.info("✓✓✓ LOCAL MODE: Skipping WordPress upload")
+        logger.info("✓✓✓ Sending email with downloadable article attachment")
 
-    # Send email notification with HTML attachment
-    from email_notification import send_article_notification_with_attachment
-    email_sent = send_article_notification_with_attachment(
-        title=post['title']['rendered'],
-        article_html=blog_post_content,  # Full HTML with styling
-        hero_image_url=hero_image_url,
-        user_email=user.email,
-        mode="wordpress",
-        wordpress_url=wordpress_url,
-        post_id=post['id']
-    )
+        from email_notification import send_article_notification_with_attachment
+        email_sent = send_article_notification_with_attachment(
+            title=title,
+            article_html=blog_post_content,
+            hero_image_url=hero_image_url,
+            user_email=user.email,
+            mode="local",  # Use local mode email template
+            wordpress_url=None,
+            post_id=None
+        )
 
-    if not email_sent:
-        logger.warning(f"Failed to send email notification for user {user_id}")
-        post['email_notification_sent'] = False
-    else:
-        post['email_notification_sent'] = True
+        if email_sent:
+            logger.info(f"✓ Local mode article emailed to {user.email}")
+            return {
+                'title': title,
+                'content': blog_post_content,
+                'hero_image_url': hero_image_url,
+                'mode': 'local',
+                'email_sent': True,
+                'message': 'Article created successfully. Download link sent to your email.'
+            }, None
+        else:
+            logger.warning(f"Failed to send local mode email to {user.email}")
+            return {
+                'title': title,
+                'content': blog_post_content,
+                'hero_image_url': hero_image_url,
+                'mode': 'local',
+                'email_sent': False,
+                'message': 'Article created but email delivery failed. Please contact support.'
+            }, None
 
-    return post, None
+    # WORDPRESS MODE: Try WordPress post creation with comprehensive error handling
+    try:
+        post = create_wordpress_post(title, blog_post_content, user_id, hero_image_url)
+
+        if not post:
+            # WordPress upload failed - send failure email with article attachment
+            post_type = "scheduled post" if is_scheduled else "manual post"
+            logger.error(f"WordPress post creation returned None for user {user_id} ({post_type})")
+
+            error_details = {
+                "error_message": f"WordPress post creation failed ({post_type}) - check credentials and site accessibility",
+                "failure_point": "article_creation",
+                "technical_details": f"create_wordpress_post() returned None for {post_type}. Common causes:\n"
+                                   "- WordPress Application Password missing or incorrect\n"
+                                   "- WordPress REST API not accessible\n"
+                                   "- WordPress site URL incorrect\n"
+                                   "- WordPress permissions issue\n"
+                                   f"- Post type: {post_type}",
+                "resolution_steps": [
+                    "Log into your WordPress dashboard manually to confirm credentials work",
+                    "Go to Users → Profile → Application Passwords in WordPress",
+                    "Generate a new Application Password if needed",
+                    "Update the Application Password in your dashboard settings",
+                    "Verify your WordPress REST API URL is correct (e.g., https://yoursite.com/wp-json/wp/v2)",
+                    "Check that WordPress REST API is enabled (try visiting https://yoursite.com/wp-json/)",
+                    "Manual upload: Open attached HTML, copy content, paste into new WordPress post"
+                ] + (["NOTE: This was a scheduled post. Fix credentials to prevent future failures."] if is_scheduled else [])
+            }
+
+            from email_notification import send_wordpress_failure_notification
+            email_sent = send_wordpress_failure_notification(
+                title=title,
+                article_html=blog_post_content,
+                user_email=user.email,
+                error_details=error_details,
+                wordpress_url=wordpress_url
+            )
+
+            if email_sent:
+                logger.info(f"✓ Failure notification with article attachment sent to {user.email}")
+                # Still return error, but user has the article
+                return None, "WordPress upload failed - article emailed to you for manual upload"
+            else:
+                logger.error(f"Failed to send failure notification email")
+                return None, "WordPress upload failed and email notification failed - contact support"
+
+        # WordPress upload succeeded - send success email
+        logger.info(f"✓ WordPress post created successfully: ID {post.get('id')}")
+
+        from email_notification import send_article_notification_with_attachment
+        email_sent = send_article_notification_with_attachment(
+            title=post['title']['rendered'],
+            article_html=blog_post_content,
+            hero_image_url=hero_image_url,
+            user_email=user.email,
+            mode="wordpress",
+            wordpress_url=wordpress_url,
+            post_id=post['id']
+        )
+
+        if not email_sent:
+            logger.warning(f"Failed to send success email notification for user {user_id}")
+            post['email_notification_sent'] = False
+        else:
+            logger.info(f"✓ Success notification sent to {user.email}")
+            post['email_notification_sent'] = True
+
+        return post, None
+
+    except Exception as e:
+        # Catch any WordPress upload exceptions
+        logger.error(f"WordPress upload exception for user {user_id}: {str(e)}")
+        logger.error(traceback.format_exc())
+
+        # Determine failure point from error message
+        error_str = str(e).lower()
+        if "password" in error_str or "authentication" in error_str or "401" in error_str:
+            failure_point = "authentication"
+            error_message = "WordPress authentication failed - check Application Password"
+            resolution_steps = [
+                "Log into WordPress dashboard to verify credentials",
+                "Go to Users → Profile → Application Passwords",
+                "Generate a new Application Password",
+                "Update in dashboard settings",
+                "Manual upload: Use attached HTML file"
+            ]
+        elif "image" in error_str or "media" in error_str or "upload" in error_str:
+            failure_point = "image_upload"
+            error_message = "Failed to upload images to WordPress media library"
+            resolution_steps = [
+                "Check WordPress media upload permissions",
+                "Verify WordPress media library is accessible",
+                "Check WordPress file upload size limits",
+                "Manual upload: Use attached HTML (images embedded)"
+            ]
+        elif "rest" in error_str or "api" in error_str or "404" in error_str:
+            failure_point = "rest_api"
+            error_message = "WordPress REST API not accessible"
+            resolution_steps = [
+                "Verify WordPress REST API is enabled",
+                "Visit https://yoursite.com/wp-json/ to test",
+                "Check WordPress URL is correct in dashboard",
+                "Manual upload: Use attached HTML file"
+            ]
+        else:
+            failure_point = "wordpress_upload"
+            error_message = f"WordPress upload error: {str(e)[:200]}"
+            resolution_steps = [
+                "Check all WordPress credentials in dashboard",
+                "Verify WordPress site is accessible",
+                "Check WordPress error logs",
+                "Manual upload: Use attached HTML file"
+            ]
+
+        error_details = {
+            "error_message": error_message,
+            "failure_point": failure_point,
+            "technical_details": f"Exception: {type(e).__name__}\n{str(e)}\n\nTraceback:\n{traceback.format_exc()}",
+            "resolution_steps": resolution_steps
+        }
+
+        from email_notification import send_wordpress_failure_notification
+        email_sent = send_wordpress_failure_notification(
+            title=title,
+            article_html=blog_post_content,
+            user_email=user.email,
+            error_details=error_details,
+            wordpress_url=wordpress_url
+        )
+
+        if email_sent:
+            logger.info(f"✓ Failure notification with article sent to {user.email}")
+            return None, f"{error_message} - article emailed to you for manual upload"
+        else:
+            logger.error(f"Failed to send failure notification")
+            return None, f"{error_message} - email notification also failed - contact support"
 
 # Route handlers
 @app.route('/')
@@ -712,8 +930,7 @@ def profile():  # type: ignore[return]
             "credit_balance": current_user.credit_balance,
             "openai_api_key": current_user.openai_api_key,
             "wordpress_rest_api_url": current_user.wordpress_rest_api_url,
-            "wordpress_username": current_user.wordpress_username,
-            "wordpress_password": current_user.wordpress_password,
+            "wordpress_app_password": current_user.wordpress_app_password,
             "perplexity_api_token": current_user.perplexity_api_token,
             "specific_topic_queries": current_user.specific_topic_queries or {},
             "system_prompt": current_user.system_prompt,
@@ -730,8 +947,8 @@ def profile():  # type: ignore[return]
 
             fields_to_update = [
                 'first_name', 'last_name', 'phone', 'billing_address',
-                'openai_api_key', 'wordpress_rest_api_url', 'wordpress_username',
-                'wordpress_password', 'perplexity_api_token', 'specific_topic_queries',
+                'openai_api_key', 'wordpress_rest_api_url', 'wordpress_app_password',
+                'perplexity_api_token', 'specific_topic_queries',
                 'system_prompt', 'schedule'
             ]
             for field in fields_to_update:
@@ -745,6 +962,47 @@ def profile():  # type: ignore[return]
             app.logger.error(f"Profile update error: {str(e)}")
             return jsonify({"error": "An unexpected error occurred while updating the profile"}), 500
 
+@app.route('/api/test_wordpress', methods=['POST'])
+@login_required
+def test_wordpress():
+    """Test WordPress connection with Application Password"""
+    try:
+        data = request.get_json()
+        wordpress_url = data.get('wordpress_url', '').strip()
+        app_password = data.get('app_password', '').strip()
+
+        if not wordpress_url or not app_password:
+            return jsonify({"error": "WordPress URL and Application Password are required"}), 400
+
+        # Temporarily set credentials for testing (don't save yet)
+        from wordpress_integration import normalize_wordpress_url, construct_api_endpoint, create_auth_header
+        import requests as req
+
+        base_url = normalize_wordpress_url(wordpress_url)
+        endpoint = construct_api_endpoint(base_url)
+
+        # Use email username as WordPress username
+        username = current_user.email.split('@')[0]
+        headers = create_auth_header(username, app_password)
+
+        # Test connection
+        response = req.get(endpoint, headers=headers, timeout=10)
+
+        if response.status_code == 200:
+            return jsonify({"message": "Connection successful! Your WordPress site is ready."}), 200
+        elif response.status_code == 401:
+            return jsonify({"error": "Authentication failed. Please check your Application Password."}), 401
+        else:
+            return jsonify({"error": f"Connection failed with status code: {response.status_code}"}), 400
+
+    except req.exceptions.Timeout:
+        return jsonify({"error": "Connection timeout. Please check your WordPress URL."}), 408
+    except req.exceptions.RequestException as e:
+        return jsonify({"error": f"Connection error: {str(e)}"}), 500
+    except Exception as e:
+        app.logger.error(f"Error testing WordPress connection: {str(e)}")
+        return jsonify({"error": "An unexpected error occurred"}), 500
+
 @app.route('/api/update_integrations', methods=['POST'])
 @login_required
 def update_integrations():
@@ -753,8 +1011,8 @@ def update_integrations():
         return jsonify({"error": "No data provided"}), 400
 
     fields_to_update = [
-        'openai_api_key', 'wordpress_rest_api_url', 'wordpress_username',
-        'wordpress_password', 'perplexity_api_token'
+        'openai_api_key', 'wordpress_rest_api_url', 'wordpress_app_password',
+        'perplexity_api_token'
     ]
     updated_fields = []
 
@@ -860,6 +1118,29 @@ def create_test_post():
     try:
         logger.info(f"[V3] Starting AI-powered magazine article creation for user {current_user.id}")
 
+        # Get request parameters first
+        data = request.json or {}
+        manual_topic = data.get('blog_post_idea', '').strip()
+        manual_system_prompt = data.get('system_prompt', '').strip()
+        manual_writing_style = data.get('writing_style', '').strip()
+        user_chose_local_mode = data.get('local_mode', False)  # NEW: User can explicitly choose local mode
+
+        # PRE-FLIGHT CHECK: Determine if we should use local mode
+        wordpress_configured = has_wordpress_configured(current_user)
+
+        if user_chose_local_mode:
+            # User explicitly chose local mode
+            local_mode = True
+            logger.info(f"[V3] User explicitly chose LOCAL MODE (downloadable article)")
+        elif not wordpress_configured:
+            # WordPress not configured - automatically use local mode
+            local_mode = True
+            logger.info(f"[V3] WordPress not configured - automatically using LOCAL MODE")
+        else:
+            # WordPress configured and user didn't choose local mode - use WordPress
+            local_mode = False
+            logger.info(f"[V3] WordPress configured - using WORDPRESS MODE")
+
         # CHECK CREDITS FIRST
         has_credits, credit_message = check_sufficient_credits(current_user)
         if not has_credits:
@@ -878,12 +1159,6 @@ def create_test_post():
 
         logger.info(f"[V3] Credits deducted. Proceeding with article generation")
         logger.info(f"[V3] Using GPT-5-mini with reasoning + SeeDream-4 2K images")
-
-        # Get manual topic, system prompt, and writing style from request body
-        data = request.json or {}
-        manual_topic = data.get('blog_post_idea', '').strip()
-        manual_system_prompt = data.get('system_prompt', '').strip()
-        manual_writing_style = data.get('writing_style', '').strip()
 
         # Use manual inputs if provided, otherwise use saved topics
         if manual_topic:
@@ -909,11 +1184,17 @@ def create_test_post():
                 current_user.id,
                 manual_topic=perplexity_research,  # Pass Perplexity research, not raw topic
                 manual_system_prompt=manual_system_prompt or None,
-                manual_writing_style=manual_writing_style or None
+                manual_writing_style=manual_writing_style or None,
+                local_mode=local_mode,  # Pass local_mode flag
+                is_scheduled=False  # This is a manual post
             )
         else:
             logger.info(f"[V3] Using saved topics rotation")
-            post, error = create_blog_post_v3(current_user.id)
+            post, error = create_blog_post_v3(
+                current_user.id,
+                local_mode=local_mode,  # Pass local_mode flag
+                is_scheduled=False  # This is a manual post
+            )
 
         if error:
             logger.error(f"Error creating V3 blog post for user {current_user.id}: {error}")
@@ -926,22 +1207,43 @@ def create_test_post():
             refund_credits(current_user, db, reason="Article generation failed: No post created")
             return jsonify({"error": "Failed to create the test post."}), 500
 
-        logger.info(f"[V3] Successfully created magazine-style post with reasoning for user {current_user.id}")
+        logger.info(f"[V3] Successfully created magazine-style post for user {current_user.id}")
 
-        response_data = {
-            "message": "V3 Magazine-style article created with GPT-5-mini reasoning & SeeDream-4 2K images!",
-            "title": post['title']['rendered'],
-            "content": post['content']['rendered'],
-            "image_url": post.get('_links', {}).get('wp:featuredmedia', [{}])[0].get('href'),
-            "version": "3.0",
-            "features": "GPT-5-mini reasoning + SeeDream-4 2K photorealistic images"
-        }
+        # Handle response based on mode
+        if local_mode:
+            # Local mode response
+            logger.info(f"[V3] LOCAL MODE article created for user {current_user.id}")
+            response_data = {
+                "message": post.get('message', "Downloadable article created! Check your email for the HTML file."),
+                "title": post.get('title', 'Article'),
+                "mode": "local",
+                "email_sent": post.get('email_sent', False),
+                "version": "3.0",
+                "features": "GPT-5-mini reasoning + SeeDream-4 2K images + Local downloadable format"
+            }
 
-        if not post.get('email_notification_sent', True):
-            response_data["warning"] = "Post created, but email notification failed to send."
-            logger.warning(f"Email notification failed to send for user {current_user.id}")
+            if not post.get('email_sent'):
+                response_data["warning"] = "Article created, but email delivery failed. Please contact support."
 
-        return jsonify(response_data), 200
+            return jsonify(response_data), 200
+        else:
+            # WordPress mode response
+            logger.info(f"[V3] WORDPRESS article created for user {current_user.id}")
+            response_data = {
+                "message": "Magazine-style article created and published to WordPress!",
+                "title": post['title']['rendered'],
+                "content": post['content']['rendered'],
+                "image_url": post.get('_links', {}).get('wp:featuredmedia', [{}])[0].get('href'),
+                "mode": "wordpress",
+                "version": "3.0",
+                "features": "GPT-5-mini reasoning + SeeDream-4 2K images"
+            }
+
+            if not post.get('email_notification_sent', True):
+                response_data["warning"] = "Post created, but email notification failed to send."
+                logger.warning(f"Email notification failed to send for user {current_user.id}")
+
+            return jsonify(response_data), 200
     except Exception as e:
         logger.error(f"Unexpected error in V3 create_test_post for user {current_user.id}: {str(e)}")
         logger.error(f"Traceback: {traceback.format_exc()}")
@@ -1198,6 +1500,253 @@ def handle_setup_intent_succeeded(setup_intent):
 
     except Exception as e:
         logger.error(f"[Stripe] Error handling setup intent: {e}")
+
+
+# ====================================================================
+# Article Library API Endpoints
+# ====================================================================
+
+@app.route('/api/users/<int:user_id>/articles', methods=['GET'])
+@login_required
+def get_user_articles(user_id):
+    """
+    Get all articles for a user with optional filtering and pagination.
+
+    Query params:
+        - status: Filter by status (draft, published, local, failed)
+        - mode: Filter by generation_mode (wordpress, local)
+        - search: Search in title
+        - limit: Number of results (default 50)
+        - offset: Pagination offset (default 0)
+        - sort: Sort order (newest, oldest, title)
+    """
+    try:
+        # Verify user access
+        if current_user.id != user_id:
+            return jsonify({"error": "Unauthorized"}), 403
+
+        # Get query parameters
+        status_filter = request.args.get('status')
+        mode_filter = request.args.get('mode')
+        search_term = request.args.get('search', '').strip()
+        limit = min(int(request.args.get('limit', 50)), 100)  # Max 100
+        offset = int(request.args.get('offset', 0))
+        sort_order = request.args.get('sort', 'newest')
+
+        # Build query
+        query = Article.query.filter_by(user_id=user_id)
+
+        if status_filter:
+            query = query.filter_by(status=status_filter)
+
+        if mode_filter:
+            query = query.filter_by(generation_mode=mode_filter)
+
+        if search_term:
+            query = query.filter(Article.title.contains(search_term))
+
+        # Apply sorting
+        if sort_order == 'oldest':
+            query = query.order_by(Article.created_at.asc())
+        elif sort_order == 'title':
+            query = query.order_by(Article.title.asc())
+        else:  # newest (default)
+            query = query.order_by(Article.created_at.desc())
+
+        # Get total count
+        total_count = query.count()
+
+        # Apply pagination
+        articles = query.limit(limit).offset(offset).all()
+
+        # Format response
+        result = {
+            "total": total_count,
+            "limit": limit,
+            "offset": offset,
+            "articles": [
+                {
+                    "id": article.id,
+                    "title": article.title,
+                    "word_count": article.word_count,
+                    "status": article.status,
+                    "generation_mode": article.generation_mode,
+                    "hero_image_url": article.hero_image_url,
+                    "wordpress_url": article.wordpress_url,
+                    "created_at": article.created_at.isoformat(),
+                    "updated_at": article.updated_at.isoformat()
+                }
+                for article in articles
+            ]
+        }
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        logger.error(f"[API] Error fetching articles: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/users/<int:user_id>/articles/<int:article_id>', methods=['GET'])
+@login_required
+def get_article_by_id(user_id, article_id):
+    """Get full article details including HTML content."""
+    try:
+        # Verify user access
+        if current_user.id != user_id:
+            return jsonify({"error": "Unauthorized"}), 403
+
+        # Get article
+        article = Article.query.filter_by(id=article_id, user_id=user_id).first()
+
+        if not article:
+            return jsonify({"error": "Article not found"}), 404
+
+        # Format response with full details
+        result = {
+            "id": article.id,
+            "title": article.title,
+            "content_html": article.content_html,
+            "hero_image_url": article.hero_image_url,
+            "section_images": article.section_images,
+            "word_count": article.word_count,
+            "status": article.status,
+            "generation_mode": article.generation_mode,
+            "wordpress_post_id": article.wordpress_post_id,
+            "wordpress_url": article.wordpress_url,
+            "metadata": article.metadata,
+            "backup_file_path": article.backup_file_path,
+            "created_at": article.created_at.isoformat(),
+            "updated_at": article.updated_at.isoformat()
+        }
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        logger.error(f"[API] Error fetching article {article_id}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ====================================================================
+# Image Library API Endpoints
+# ====================================================================
+
+@app.route('/api/users/<int:user_id>/images', methods=['GET'])
+@login_required
+def get_user_images(user_id):
+    """
+    Get all images for a user with optional filtering and pagination.
+
+    Query params:
+        - type: Filter by image_type (hero, section)
+        - article_id: Filter by article
+        - search: Search in prompt (full-text search)
+        - limit: Number of results (default 50)
+        - offset: Pagination offset (default 0)
+        - sort: Sort order (newest, oldest)
+    """
+    try:
+        # Verify user access
+        if current_user.id != user_id:
+            return jsonify({"error": "Unauthorized"}), 403
+
+        # Get query parameters
+        type_filter = request.args.get('type')
+        article_id_filter = request.args.get('article_id')
+        search_term = request.args.get('search', '').strip()
+        limit = min(int(request.args.get('limit', 50)), 100)  # Max 100
+        offset = int(request.args.get('offset', 0))
+        sort_order = request.args.get('sort', 'newest')
+
+        # Build query
+        query = Image.query.filter_by(user_id=user_id)
+
+        if type_filter:
+            query = query.filter_by(image_type=type_filter)
+
+        if article_id_filter:
+            query = query.filter_by(article_id=int(article_id_filter))
+
+        if search_term:
+            query = query.filter(Image.prompt.contains(search_term))
+
+        # Apply sorting
+        if sort_order == 'oldest':
+            query = query.order_by(Image.created_at.asc())
+        else:  # newest (default)
+            query = query.order_by(Image.created_at.desc())
+
+        # Get total count
+        total_count = query.count()
+
+        # Apply pagination
+        images = query.limit(limit).offset(offset).all()
+
+        # Format response
+        result = {
+            "total": total_count,
+            "limit": limit,
+            "offset": offset,
+            "images": [
+                {
+                    "id": image.id,
+                    "article_id": image.article_id,
+                    "image_url": image.image_url,
+                    "image_type": image.image_type,
+                    "prompt": image.prompt,
+                    "model": image.model,
+                    "aspect_ratio": image.aspect_ratio,
+                    "cost_usd": image.cost_usd,
+                    "tags": image.tags,
+                    "created_at": image.created_at.isoformat()
+                }
+                for image in images
+            ]
+        }
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        logger.error(f"[API] Error fetching images: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/users/<int:user_id>/images/<int:image_id>', methods=['GET'])
+@login_required
+def get_image_by_id(user_id, image_id):
+    """Get full image details."""
+    try:
+        # Verify user access
+        if current_user.id != user_id:
+            return jsonify({"error": "Unauthorized"}), 403
+
+        # Get image
+        image = Image.query.filter_by(id=image_id, user_id=user_id).first()
+
+        if not image:
+            return jsonify({"error": "Image not found"}), 404
+
+        # Format response with full details
+        result = {
+            "id": image.id,
+            "article_id": image.article_id,
+            "image_url": image.image_url,
+            "image_type": image.image_type,
+            "prompt": image.prompt,
+            "model": image.model,
+            "aspect_ratio": image.aspect_ratio,
+            "replicate_prediction_id": image.replicate_prediction_id,
+            "file_size_kb": image.file_size_kb,
+            "cost_usd": image.cost_usd,
+            "tags": image.tags,
+            "created_at": image.created_at.isoformat()
+        }
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        logger.error(f"[API] Error fetching image {image_id}: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == '__main__':
