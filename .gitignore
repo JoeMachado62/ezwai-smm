@@ -62,8 +62,9 @@ test_*.json
 instance/
 .webassets-cache
 
-# Migration Files (if using Flask-Migrate)
-migrations/
+# Migration Files (if using Flask-Migrate auto-generated)
+migrations/versions/
+migrations/__pycache__/
 
 # PID files
 *.pid
