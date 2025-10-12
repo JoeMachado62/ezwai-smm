@@ -78,7 +78,32 @@ temp/
 # Backup files
 *.bak
 *.backup
+*.backup_jwt
 nul
+
+# Test Scripts
+test_*.py
+cleanup_*.py
+verify_*.py
+recover_*.py
+
+# Old Migration Scripts
+fix_*.py
+migrate_*.py
+
+# Temporary Documentation
+*_FIX.md
+*_FIXES.md
+*_VERIFICATION.md
+
+# CLI Tools
+stripe_cli/
+stripe_cli.zip
+
+# Article Backups (use backups/ folder instead)
+article_backup_*.html
+emergency_article_*.html
+local_article_*.html
 
 # Sensitive credential files
 *Codes*.txt
