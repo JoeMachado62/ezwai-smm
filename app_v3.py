@@ -170,7 +170,7 @@ class Article(db.Model):  # type: ignore[misc,name-defined]
     generation_mode = db.Column(db.String(50), default='wordpress')  # type: ignore[var-annotated] - 'wordpress', 'local'
     wordpress_post_id = db.Column(db.Integer)  # type: ignore[var-annotated]
     wordpress_url = db.Column(db.String(1000))  # type: ignore[var-annotated]
-    metadata = db.Column(db.JSON)  # type: ignore[var-annotated] - Additional metadata (topic, style, etc.)
+    article_metadata = db.Column(db.JSON)  # type: ignore[var-annotated] - Additional metadata (topic, style, etc.) - Renamed from 'metadata' to avoid SQLAlchemy conflict
     backup_file_path = db.Column(db.String(500))  # type: ignore[var-annotated]
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # type: ignore[var-annotated]
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)  # type: ignore[var-annotated]
@@ -1614,7 +1614,7 @@ def get_article_by_id(user_id, article_id):
             "generation_mode": article.generation_mode,
             "wordpress_post_id": article.wordpress_post_id,
             "wordpress_url": article.wordpress_url,
-            "metadata": article.metadata,
+            "metadata": article.article_metadata,
             "backup_file_path": article.backup_file_path,
             "created_at": article.created_at.isoformat(),
             "updated_at": article.updated_at.isoformat()
