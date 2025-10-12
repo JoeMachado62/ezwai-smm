@@ -8,7 +8,8 @@ cd "$SCRIPT_DIR"
 # Configuration
 APP_MODULE="app_v3:app"
 WORKERS=4  # Number of worker processes
-BIND_ADDRESS="0.0.0.0:5000"
+PORT="${EZWAI_PORT:-5000}"  # Use EZWAI_PORT env var, default to 5000
+BIND_ADDRESS="0.0.0.0:${PORT}"
 LOG_FILE="logs/gunicorn.log"
 ACCESS_LOG="logs/access.log"
 ERROR_LOG="logs/error.log"
@@ -73,7 +74,7 @@ if [ $? -eq 0 ]; then
     echo "PID: $(cat $PID_FILE)"
     echo ""
     echo "Application is now running at:"
-    echo "  http://localhost:5000"
+    echo "  http://localhost:${PORT}"
     echo ""
     echo "To view logs:"
     echo "  tail -f $LOG_FILE"
